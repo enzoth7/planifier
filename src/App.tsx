@@ -4,7 +4,6 @@ import {
   ClientItem,
   ClientType,
   ClientOwner,
-  TabType,
   VintageColorKey,
   UserProfile,
   APP_USERS,
@@ -14,23 +13,23 @@ import {
 } from './types';
 import { loadStoredActions, saveStoredActions, loadStoredClients, saveStoredClients } from './utils/storage';
 import { actionsService } from './services/actionsService';
+import { preferencesService, UserPreferences } from './services/preferencesService';
 import { getInitialEndpoint, navigateEndpoint, subscribeToEndpointChange } from './utils/router';
 import { soundFx } from './utils/sound';
 import { fireCraftsmanCelebration } from './utils/confetti';
-import { Header } from './components/Header';
-import { BoardTable } from './components/BoardTable';
-import { CompletedTable } from './components/CompletedTable';
-import { ClientsTable } from './components/ClientsTable';
-import { CalendarView } from './components/CalendarView';
+import {
+  EnzoWorkspace,
+  CristianWorkspace,
+  JulietaWorkspace,
+  PolaristWorkspace,
+  WorkspaceProps,
+} from './workspaces';
 import { ActionModal } from './components/ActionModal';
 import { ClientModal } from './components/ClientModal';
-import { BackgroundSelector } from './components/BackgroundSelector';
 import { LoginScreen } from './components/LoginScreen';
 import { Loader2 } from 'lucide-react';
 
-
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('board');
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [completedActions, setCompletedActions] = useState<ActionItem[]>([]);
   const [clients, setClients] = useState<ClientItem[]>([]);
@@ -74,6 +73,7 @@ export const App: React.FC = () => {
     localStorage.setItem('plannifier_auth_email', user.email);
     setAuthenticatedUser(user);
     handleNavigateEndpoint(user.endpoint);
+    preferencesService.loadPreferences(user.email).then(setPreferences);
   };
 
   const handleLogout = () => {
@@ -94,62 +94,45 @@ export const App: React.FC = () => {
     }
   }, [authenticatedUser, currentEndpoint]);
 
-  const [selectedTeamMemberEmail, setSelectedTeamMemberEmail] = useState<string | null>(null);
+  // Preferencias de usuario aisladas (con fallback y sincronización Supabase)
+  const initialUserEmail = authenticatedUser?.email || APP_USERS[0].email;
+  const [preferences, setPreferences] = useState<UserPreferences>(() =>
+    preferencesService.getStoredPreferences(initialUserEmail)
+  );
 
-  // Calendar stats state
-  const [calendarStats, setCalendarStats] = useState<{ totalValue: number; count: number }>({
-    totalValue: 0,
-    count: 0,
-  });
-
-  // Background customization state (isolated per user with fallback)
-  const [bgImage, setBgImage] = useState<string>(() => {
-    const initialUserEmail = localStorage.getItem('plannifier_current_user_email') || APP_USERS[0].email;
-    return (
-      localStorage.getItem(`plannifier_bg_image_${initialUserEmail}`) ||
-      localStorage.getItem('plannifier_bg_image') ||
-      '/Bg.png'
-    );
-  });
-  const [bgOpacity, setBgOpacity] = useState<number>(() => {
-    const initialUserEmail = localStorage.getItem('plannifier_current_user_email') || APP_USERS[0].email;
-    const stored =
-      localStorage.getItem(`plannifier_bg_opacity_${initialUserEmail}`) ||
-      localStorage.getItem('plannifier_bg_opacity');
-    return stored ? Number(stored) : 30;
-  });
-
-  // Sincronizar fondo personalizado según el usuario del endpoint activo
+  // Sincronizar preferencias aisladas al cambiar el usuario activo
   useEffect(() => {
-    const userBg =
-      localStorage.getItem(`plannifier_bg_image_${currentUser.email}`) ||
-      localStorage.getItem('plannifier_bg_image') ||
-      '/Bg.png';
-    const userOpacity =
-      localStorage.getItem(`plannifier_bg_opacity_${currentUser.email}`) ||
-      localStorage.getItem('plannifier_bg_opacity');
-    setBgImage(userBg);
-    setBgOpacity(userOpacity ? Number(userOpacity) : 30);
-  }, [currentUser.email]);
+    const targetEmail = authenticatedUser?.email || currentUser.email;
+    if (!targetEmail) return;
 
+    // Carga síncrona instantánea desde localStorage
+    const local = preferencesService.getStoredPreferences(targetEmail);
+    setPreferences(local);
+
+    // Consulta asíncrona a Supabase en segundo plano
+    let isMounted = true;
+    preferencesService.loadPreferences(targetEmail).then((pref) => {
+      if (isMounted) {
+        setPreferences(pref);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authenticatedUser?.email, currentUser.email]);
+
+  // Selección de fondo y opacidad (guardado estricto por usuario)
   const handleSelectBg = (url: string) => {
-    setBgImage(url);
-    try {
-      localStorage.setItem(`plannifier_bg_image_${currentUser.email}`, url);
-      localStorage.setItem('plannifier_bg_image', url);
-    } catch (e) {
-      console.warn('No se pudo guardar la imagen de fondo en localStorage:', e);
-    }
+    const targetEmail = authenticatedUser?.email || currentUser.email;
+    setPreferences((prev) => ({ ...prev, bgImage: url }));
+    preferencesService.savePreferences(targetEmail, { bgImage: url });
   };
 
   const handleSelectOpacity = (opacity: number) => {
-    setBgOpacity(opacity);
-    try {
-      localStorage.setItem(`plannifier_bg_opacity_${currentUser.email}`, opacity.toString());
-      localStorage.setItem('plannifier_bg_opacity', opacity.toString());
-    } catch (e) {
-      console.warn('No se pudo guardar la opacidad de fondo en localStorage:', e);
-    }
+    const targetEmail = authenticatedUser?.email || currentUser.email;
+    setPreferences((prev) => ({ ...prev, bgOpacity: opacity }));
+    preferencesService.savePreferences(targetEmail, { bgOpacity: opacity });
   };
 
   // Modal State for Actions
@@ -167,7 +150,7 @@ export const App: React.FC = () => {
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<ClientItem | null>(null);
 
-  // Load from Supabase on mount (with localStorage fallback)
+  // Load actions and clients from Supabase on mount (with localStorage fallback)
   useEffect(() => {
     let isMounted = true;
 
@@ -215,8 +198,8 @@ export const App: React.FC = () => {
     }
   }, [actions, completedActions, clients, isLoading]);
 
-  // Aislamiento estricto de clientes por Endpoint / Espacio
-  const filteredClients = useMemo(() => {
+  // Clientes filtrados según el workspace activo para su uso en modales
+  const activeWorkspaceClients = useMemo(() => {
     if (currentEndpoint === 'polarist') {
       return clients.filter((c) => c.owner === 'polarist');
     }
@@ -226,71 +209,10 @@ export const App: React.FC = () => {
     if (currentEndpoint === 'julieta') {
       return clients.filter((c) => c.owner === 'juli');
     }
-    // Espacio personal de Enzo
     return clients.filter((c) => (c.owner || 'enzo') === 'enzo');
   }, [clients, currentEndpoint]);
 
-  // Aislamiento estricto de acciones activas por Endpoint / Espacio
-  const filteredActions = useMemo(() => {
-    if (currentEndpoint === 'polarist') {
-      // Modo Equipo Polarist: acciones del espacio Polarist
-      return actions.filter((item) => {
-        const isPolarist =
-          item.workspaceScope === 'polarist' ||
-          item.target?.trim().toLowerCase() === 'polarist';
-        if (!isPolarist) return false;
-        if (selectedTeamMemberEmail) {
-          const email = item.userEmail || APP_USERS[0].email;
-          return email.toLowerCase() === selectedTeamMemberEmail.toLowerCase();
-        }
-        return true;
-      });
-    }
-
-    // Modo Personal: únicamente las acciones personales del usuario actual
-    const targetUserEmail = currentUser.email;
-    return actions.filter((item) => {
-      // Tareas de Polarist no se muestran en los tableros personales
-      if (item.workspaceScope === 'polarist') return false;
-      const email = item.userEmail || 'enzothome1@gmail.com';
-      return email.toLowerCase() === targetUserEmail.toLowerCase();
-    });
-  }, [actions, currentEndpoint, currentUser.email, selectedTeamMemberEmail]);
-
-  // Aislamiento estricto de acciones completadas por Endpoint / Espacio
-  const filteredCompletedActions = useMemo(() => {
-    if (currentEndpoint === 'polarist') {
-      return completedActions.filter((item) => {
-        const isPolarist =
-          item.workspaceScope === 'polarist' ||
-          item.target?.trim().toLowerCase() === 'polarist';
-        if (!isPolarist) return false;
-        if (selectedTeamMemberEmail) {
-          const email = item.userEmail || APP_USERS[0].email;
-          return email.toLowerCase() === selectedTeamMemberEmail.toLowerCase();
-        }
-        return true;
-      });
-    }
-
-    const targetUserEmail = currentUser.email;
-    return completedActions.filter((item) => {
-      if (item.workspaceScope === 'polarist') return false;
-      const email = item.userEmail || 'enzothome1@gmail.com';
-      return email.toLowerCase() === targetUserEmail.toLowerCase();
-    });
-  }, [completedActions, currentEndpoint, currentUser.email, selectedTeamMemberEmail]);
-
-  // Total money calculations basados en el workspace y filtros activos
-  const totalValue = useMemo(() => {
-    return filteredActions.reduce((acc, curr) => acc + (curr.value || 0), 0);
-  }, [filteredActions]);
-
-  const completedValue = useMemo(() => {
-    return filteredCompletedActions.reduce((acc, curr) => acc + (curr.value || 0), 0);
-  }, [filteredCompletedActions]);
-
-  // Handlers
+  // Handlers para Acciones
   const handleReorder = (newFilteredItems: ActionItem[]) => {
     const newFilteredMap = new Map(newFilteredItems.map((item, idx) => [item.id, idx]));
     const updatedActions = actions.map((item) => {
@@ -306,17 +228,10 @@ export const App: React.FC = () => {
     });
   };
 
-  /**
-   * REQUERIMIENTO PRINCIPAL:
-   * Al marcar completada en el tablero:
-   * - Desaparece de inmediato de la lista activa (se elimina de plannifier_actions).
-   * - Se inserta en plannifier_completed con completed_at.
-   */
   const handleToggleComplete = async (id: string) => {
     const itemToComplete = actions.find((a) => a.id === id);
     if (!itemToComplete) return;
 
-    // Celebración visual y táctil
     soundFx.playChalkComplete();
     fireCraftsmanCelebration();
 
@@ -327,7 +242,6 @@ export const App: React.FC = () => {
       completedAt,
     };
 
-    // Actualización optimista: desaparece inmediatamente del tablero activo
     setActions((prev) => prev.filter((item) => item.id !== id));
     setCompletedActions((prev) => [completedItem, ...prev]);
 
@@ -335,15 +249,11 @@ export const App: React.FC = () => {
       await actionsService.completeAction(completedItem);
     } catch (err) {
       console.error('Error al persistir acción completada en Supabase:', err);
-      // Revertir en caso de fallo
       setActions((prev) => [...prev, itemToComplete]);
       setCompletedActions((prev) => prev.filter((item) => item.id !== id));
     }
   };
 
-  /**
-   * Restaurar acción completada al tablero activo
-   */
   const handleRestoreAction = async (item: ActionItem) => {
     soundFx.playWoodClick();
 
@@ -354,7 +264,6 @@ export const App: React.FC = () => {
       order: actions.length,
     };
 
-    // Actualización optimista: remover de completados y poner en tablero activo
     setCompletedActions((prev) => prev.filter((a) => a.id !== item.id));
     setActions((prev) => [restoredItem, ...prev]);
 
@@ -362,15 +271,11 @@ export const App: React.FC = () => {
       await actionsService.restoreAction(restoredItem, 0);
     } catch (err) {
       console.error('Error al restaurar acción en Supabase:', err);
-      // Revertir en caso de fallo
       setCompletedActions((prev) => [item, ...prev]);
       setActions((prev) => prev.filter((a) => a.id !== item.id));
     }
   };
 
-  /**
-   * Eliminar permanentemente del historial de completados
-   */
   const handleDeleteCompleted = async (id: string) => {
     soundFx.playTock();
     setCompletedActions((prev) => {
@@ -401,6 +306,11 @@ export const App: React.FC = () => {
     actionsService.deleteAction(id).catch((err) => {
       console.error('Error al eliminar acción activa en Supabase:', err);
     });
+  };
+
+  const handleUpdateAction = (action: ActionItem) => {
+    setActions((prev) => prev.map((a) => (a.id === action.id ? action : a)));
+    actionsService.updateAction(action).catch(console.error);
   };
 
   const handleUpdateColor = (id: string, color: VintageColorKey) => {
@@ -541,7 +451,20 @@ export const App: React.FC = () => {
     );
   };
 
-  // Client Handlers
+  const handleUpdateUserEmail = (id: string, userEmail: string) => {
+    setActions((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, userEmail };
+          actionsService.updateAction(updated).catch(console.error);
+          return updated;
+        }
+        return item;
+      })
+    );
+  };
+
+  // Handlers para Clientes
   const handleAddClient = (clientData: {
     name: string;
     type: ClientType;
@@ -630,11 +553,11 @@ export const App: React.FC = () => {
     const isPolarist = currentEndpoint === 'polarist';
     const workspaceScope = isPolarist ? ('polarist' as const) : ('personal' as const);
     const defaultTarget = isPolarist
-      ? (filteredClients[0]?.name || 'Polarist Enterprise')
-      : (filteredClients[0]?.name || 'General');
+      ? (activeWorkspaceClients[0]?.name || 'Polarist Enterprise')
+      : (activeWorkspaceClients[0]?.name || 'General');
 
     const targetToUse = data.target?.trim() || defaultTarget;
-    const clientMatch = filteredClients.find(
+    const clientMatch = activeWorkspaceClients.find(
       (c) => c.name.toLowerCase() === targetToUse.toLowerCase()
     );
     const resolvedColor = data.tagColor || clientMatch?.color || 'emerald';
@@ -677,8 +600,8 @@ export const App: React.FC = () => {
       const isPolarist = currentEndpoint === 'polarist';
       const workspaceScope = isPolarist ? ('polarist' as const) : ('personal' as const);
       const defaultTarget = isPolarist
-        ? (filteredClients[0]?.name || 'Polarist Enterprise')
-        : (filteredClients[0]?.name || 'General');
+        ? (activeWorkspaceClients[0]?.name || 'Polarist Enterprise')
+        : (activeWorkspaceClients[0]?.name || 'General');
 
       const newItem: ActionItem = {
         id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -714,118 +637,92 @@ export const App: React.FC = () => {
       <LoginScreen
         onLogin={handleLogin}
         bgImage="/BgPolarist.png"
-        bgOpacity={bgOpacity}
+        bgOpacity={preferences.bgOpacity}
       />
     );
   }
 
-  const activeBgImage = currentEndpoint === 'polarist' ? '/BgPolarist.png' : bgImage;
+  // Polarist fuerza siempre su fondo corporativo BgPolarist.png.
+  // Los espacios personales utilizan el fondo configurado por cada usuario.
+  const activeBgImage = currentEndpoint === 'polarist' ? '/BgPolarist.png' : preferences.bgImage;
+  const activeBgOpacity = preferences.bgOpacity;
+
+  // Propiedades comunes y canalizadas para todos los workspaces
+  const workspaceProps: WorkspaceProps = {
+    actions,
+    completedActions,
+    clients,
+    currentUser,
+    onNavigateEndpoint: handleNavigateEndpoint,
+    onLogout: handleLogout,
+    onAddAction: handleQuickAdd,
+    onUpdateAction: handleUpdateAction,
+    onDeleteAction: handleDelete,
+    onCompleteAction: handleToggleComplete,
+    onRestoreAction: handleRestoreAction,
+    onDeleteCompletedAction: handleDeleteCompleted,
+    onReorderActions: handleReorder,
+    onAddClient: handleAddClient,
+    onUpdateClient: handleUpdateClient,
+    onDeleteClient: handleDeleteClient,
+    onOpenCreateModal: handleOpenCreateModal,
+    onOpenCreateClientModal: () => {
+      setEditingClient(null);
+      setIsClientModalOpen(true);
+    },
+    onEditAction: handleEdit,
+    onSelectBg: handleSelectBg,
+    onSelectOpacity: handleSelectOpacity,
+    bgImage: activeBgImage,
+    bgOpacity: activeBgOpacity,
+    onUpdateColor: handleUpdateColor,
+    onUpdateValue: handleUpdateValue,
+    onUpdateTarget: handleUpdateTarget,
+    onUpdateTargetAndColor: handleUpdateTargetAndColor,
+    onUpdateDeadline: handleUpdateDeadline,
+    onToggleExpand: handleToggleExpand,
+    onToggleSubtask: handleToggleSubtask,
+    onAddSubtask: handleAddSubtask,
+    onDeleteSubtask: handleDeleteSubtask,
+    onUpdateNotes: handleUpdateNotes,
+    onUpdateUserEmail: handleUpdateUserEmail,
+  };
 
   return (
     <>
-      {/* Foto de fondo 100% nítida con transición suave */}
+      {/* Fondo fotográfico con transición suave */}
       <div
         className="fixed inset-0 -z-20 bg-cover bg-center pointer-events-none transition-all duration-700 ease-out"
-        style={{ backgroundImage: "url('" + activeBgImage + "')" }}
+        style={{ backgroundImage: `url('${activeBgImage}')` }}
       />
-      {/* Capa blanca suave para atenuar con transición suave */}
+      {/* Capa blanca suave para atenuación */}
       <div
         className="fixed inset-0 -z-10 bg-white pointer-events-none transition-all duration-700 ease-out"
-        style={{ opacity: bgOpacity / 100 }}
+        style={{ opacity: activeBgOpacity / 100 }}
       />
 
       <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 flex flex-col justify-between max-w-[96%] xl:max-w-[1550px] w-full mx-auto text-zinc-900">
         <main className="space-y-6">
-          {/* Minimalist Header con switch Tablero vs Calendario vs Completados vs Clientes */}
-          <Header
-            currentEndpoint={currentEndpoint}
-            onNavigateEndpoint={handleNavigateEndpoint}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            totalValue={totalValue}
-            calendarTotalValue={calendarStats.totalValue}
-            calendarActiveCount={calendarStats.count}
-            completedValue={completedValue}
-            activeCount={filteredActions.length}
-            completedCount={filteredCompletedActions.length}
-            clientsCount={filteredClients.length}
-            onOpenCreateModal={() => handleOpenCreateModal()}
-            onOpenCreateClientModal={() => {
-              setEditingClient(null);
-              setIsClientModalOpen(true);
-            }}
-            currentUser={currentUser}
-            onLogout={handleLogout}
-            selectedTeamMemberEmail={selectedTeamMemberEmail}
-            onSelectTeamMember={setSelectedTeamMemberEmail}
-          />
-
-          {/* Contenido según la pestaña activa */}
           {isLoading ? (
             <div className="rounded-xl border border-white/70 bg-white/90 backdrop-blur-md p-12 text-center shadow-xl shadow-zinc-900/5">
               <Loader2 className="w-6 h-6 animate-spin mx-auto text-zinc-400 mb-2" />
               <p className="text-xs text-zinc-500 font-mono">Sincronizando con Supabase...</p>
             </div>
-          ) : activeTab === 'board' ? (
-            /* Vista Principal: Tablero de Acciones Activas */
-            <BoardTable
-              items={filteredActions}
-              clients={filteredClients}
-              onReorder={handleReorder}
-              onToggleComplete={handleToggleComplete}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onUpdateColor={handleUpdateColor}
-              onUpdateValue={handleUpdateValue}
-              onUpdateTarget={handleUpdateTarget}
-              onUpdateTargetAndColor={handleUpdateTargetAndColor}
-              onUpdateDeadline={handleUpdateDeadline}
-              onToggleExpand={handleToggleExpand}
-              onToggleSubtask={handleToggleSubtask}
-              onAddSubtask={handleAddSubtask}
-              onDeleteSubtask={handleDeleteSubtask}
-              onUpdateNotes={handleUpdateNotes}
-              onNavigateToClients={() => setActiveTab('clients')}
-              onOpenCreateModal={() => handleOpenCreateModal()}
-              onQuickAdd={handleQuickAdd}
-              workspaceMode={workspaceMode}
-              currentUser={currentUser}
-            />
-          ) : activeTab === 'calendar' ? (
-            /* Vista Calendario: Cuadrícula de 4 Semanas */
-            <CalendarView
-              items={filteredActions}
-              clients={filteredClients}
-              onToggleComplete={handleToggleComplete}
-              onEdit={handleEdit}
-              onUpdateDeadline={handleUpdateDeadline}
-              onOpenCreateModal={handleOpenCreateModal}
-              onVisibleRangeStatsChange={setCalendarStats}
-              workspaceMode={workspaceMode}
-              selectedTeamMemberEmail={selectedTeamMemberEmail}
-              onSelectTeamMember={setSelectedTeamMemberEmail}
-            />
-          ) : activeTab === 'completed' ? (
-            /* Vista Secundaria: Historial de Acciones Completadas */
-            <CompletedTable
-              items={filteredCompletedActions}
-              onRestore={handleRestoreAction}
-              onDelete={handleDeleteCompleted}
-              workspaceMode={workspaceMode}
-            />
           ) : (
-            /* Vista Clientes e Interesados (Aislados por Espacio) */
-            <ClientsTable
-              clients={filteredClients}
-              actions={[...filteredActions, ...filteredCompletedActions]}
-              onAddClient={handleAddClient}
-              onUpdateClient={handleUpdateClient}
-              onDeleteClient={handleDeleteClient}
-              onOpenCreateModal={() => {
-                setEditingClient(null);
-                setIsClientModalOpen(true);
-              }}
-            />
+            <>
+              {currentEndpoint === 'enzo' && (
+                <EnzoWorkspace {...workspaceProps} />
+              )}
+              {currentEndpoint === 'cristian' && (
+                <CristianWorkspace {...workspaceProps} />
+              )}
+              {currentEndpoint === 'julieta' && (
+                <JulietaWorkspace {...workspaceProps} />
+              )}
+              {currentEndpoint === 'polarist' && (
+                <PolaristWorkspace {...workspaceProps} />
+              )}
+            </>
           )}
         </main>
 
@@ -839,7 +736,7 @@ export const App: React.FC = () => {
           onSave={handleSaveModalItem}
           initialData={editingItem}
           defaultDeadline={defaultDeadline}
-          clients={filteredClients}
+          clients={activeWorkspaceClients}
           workspaceMode={workspaceMode}
           currentUserEmail={currentUser.email}
         />
@@ -850,14 +747,6 @@ export const App: React.FC = () => {
           onClose={() => setIsClientModalOpen(false)}
           onSave={handleSaveClientModal}
           initialData={editingClient}
-        />
-
-        {/* Selector flotante de Fondo en esquina inferior derecha */}
-        <BackgroundSelector
-          currentBg={activeBgImage}
-          currentOpacity={bgOpacity}
-          onSelectBg={handleSelectBg}
-          onSelectOpacity={handleSelectOpacity}
         />
       </div>
     </>

@@ -63,6 +63,7 @@ interface BoardTableProps {
     userEmail?: string;
     taskType?: TaskType;
   }) => void;
+  onUpdateUserEmail?: (id: string, userEmail: string) => void;
 }
 
 export const BoardTable: React.FC<BoardTableProps> = ({
@@ -87,6 +88,7 @@ export const BoardTable: React.FC<BoardTableProps> = ({
   onOpenCreateModal,
   onNavigateToClients,
   onQuickAdd,
+  onUpdateUserEmail,
 }) => {
   // Sort and Filter States
   const [sortKey, setSortKey] = useState<SortKey>('manual');
@@ -347,15 +349,15 @@ export const BoardTable: React.FC<BoardTableProps> = ({
 
   return (
     <div className="rounded-xl border border-white/70 bg-white/90 backdrop-blur-md overflow-visible shadow-xl shadow-zinc-900/5 relative">
-      {/* 4 Columns Clean Header */}
+      {/* Clean Header */}
       <div className="hidden md:flex items-center px-4 sm:px-6 py-3 bg-zinc-50/70 border-b border-zinc-200/70 gap-3 sm:gap-4 text-xs font-semibold tracking-wider text-zinc-500 select-none rounded-t-xl">
         {/* Drag handle spacer */}
         <div className="w-9 flex-shrink-0" />
 
-        {/* 4 Main Columns */}
+        {/* Main Columns */}
         <div className="flex-1 grid grid-cols-12 gap-3 sm:gap-6 items-center">
-          {/* Col 1: Acción / Descripción (~38%) */}
-          <div className="col-span-5 pl-7 sm:pl-8">
+          {/* Col 1: Acción / Descripción */}
+          <div className={`${workspaceMode === 'team' ? 'col-span-4' : 'col-span-5'} pl-7 sm:pl-8`}>
             <button
               type="button"
               onClick={() => handleCycleSort('title')}
@@ -383,8 +385,15 @@ export const BoardTable: React.FC<BoardTableProps> = ({
             </button>
           </div>
 
-          {/* Col 2: Cliente (~25%) */}
-          <div className="col-span-3 pl-2 sm:pl-3 relative" ref={clientFilterRef}>
+          {/* Col 2 (Solo modo team): ENCARGADO */}
+          {workspaceMode === 'team' && (
+            <div className="col-span-2 pl-2 sm:pl-3 text-xs font-semibold tracking-wider text-zinc-500">
+              ENCARGADO
+            </div>
+          )}
+
+          {/* Col Cliente */}
+          <div className={`${workspaceMode === 'team' ? 'col-span-2' : 'col-span-3'} pl-2 sm:pl-3 relative`} ref={clientFilterRef}>
             <button
               type="button"
               onClick={() => setIsClientFilterOpen((prev) => !prev)}
@@ -761,130 +770,227 @@ export const BoardTable: React.FC<BoardTableProps> = ({
         </div>
 
         <div className="flex-1 grid grid-cols-12 gap-3 sm:gap-6 items-center">
-          {/* Title Input + Task Type Toggle + Member Picker */}
-          <div className="col-span-12 md:col-span-5 flex items-center gap-2">
-            {/* Toggle Tipo: Acción vs Meeting */}
-            <div className="flex items-center p-0.5 bg-zinc-100 rounded-md border border-zinc-200/70 text-[10px] flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setQuickTaskType('action')}
-                className={`px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
-                  quickTaskType === 'action'
-                    ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
-                    : 'text-zinc-500 hover:text-zinc-800'
-                }`}
-              >
-                Acción
-              </button>
-              <button
-                type="button"
-                onClick={() => setQuickTaskType('meeting')}
-                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
-                  quickTaskType === 'meeting'
-                    ? 'bg-purple-100 text-purple-900 shadow-2xs font-semibold'
-                    : 'text-zinc-500 hover:text-zinc-800'
-                }`}
-              >
-                <Video className="w-2.5 h-2.5" />
-                <span>Meeting</span>
-              </button>
-            </div>
+          {workspaceMode === 'team' ? (
+            <>
+              {/* Col 1: Acción / Descripción (col-span-12 md:col-span-4) */}
+              <div className="col-span-12 md:col-span-4 flex items-center gap-2 min-w-0">
+                {/* Toggle Tipo: Acción vs Meeting */}
+                <div className="flex items-center p-0.5 bg-zinc-100 rounded-md border border-zinc-200/70 text-[10px] flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setQuickTaskType('action')}
+                    className={`px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+                      quickTaskType === 'action'
+                        ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-800'
+                    }`}
+                  >
+                    Acción
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickTaskType('meeting')}
+                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+                      quickTaskType === 'meeting'
+                        ? 'bg-purple-100 text-purple-900 shadow-2xs font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-800'
+                    }`}
+                  >
+                    <Video className="w-2.5 h-2.5" />
+                    <span>Meeting</span>
+                  </button>
+                </div>
 
-            {/* En modo Team, selector de responsable para la nueva tarea */}
-            {workspaceMode === 'team' && (
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {APP_USERS.map((user) => {
-                  const isSelected = quickUserEmail.toLowerCase() === user.email.toLowerCase();
-                  return (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onClick={() => setQuickUserEmail(user.email)}
-                      title={`Asignar a ${user.name}`}
-                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-all cursor-pointer ${
-                        isSelected
-                          ? 'ring-2 ring-zinc-900 ring-offset-1 scale-105 shadow-xs text-white'
-                          : 'opacity-50 hover:opacity-100 text-white'
-                      }`}
-                      style={{ backgroundColor: user.avatarColor }}
-                    >
-                      {user.initials}
-                    </button>
-                  );
-                })}
+                <input
+                  type="text"
+                  value={quickTitle}
+                  onChange={(e) => {
+                    setQuickTitle(e.target.value);
+                    if (!isQuickAddExpanded && e.target.value) {
+                      setIsQuickAddExpanded(true);
+                    }
+                  }}
+                  placeholder="+ Nueva tarea de equipo para Polarist..."
+                  className="flex-1 min-w-0 bg-transparent text-zinc-900 placeholder:text-zinc-400 text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
+                />
               </div>
-            )}
 
-            <input
-              type="text"
-              value={quickTitle}
-              onChange={(e) => {
-                setQuickTitle(e.target.value);
-                if (!isQuickAddExpanded && e.target.value) {
-                  setIsQuickAddExpanded(true);
-                }
-              }}
-              placeholder={
-                workspaceMode === 'team'
-                  ? '+ Nueva tarea de equipo para Polarist...'
-                  : selectedClientFilter
-                  ? `+ Escribir nueva acción para ${selectedClientFilter}...`
-                  : '+ Escribir nueva acción y presionar Enter...'
-              }
-              className="flex-1 min-w-0 bg-transparent text-zinc-900 placeholder:text-zinc-400 text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
-            />
-          </div>
+              {/* Col 2: Selector de Encargado (col-span-6 md:col-span-2) */}
+              <div className="col-span-6 md:col-span-2 flex items-center pl-2 sm:pl-3 min-w-0">
+                <div className="flex items-center gap-1.5 bg-zinc-100/80 p-1 rounded-lg border border-zinc-200/60">
+                  {APP_USERS.map((user) => {
+                    const isSelected = quickUserEmail.toLowerCase() === user.email.toLowerCase();
+                    return (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() => setQuickUserEmail(user.email)}
+                        title={`Asignar a ${user.name}`}
+                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'ring-2 ring-zinc-900 ring-offset-1 scale-105 shadow-xs text-white'
+                            : 'opacity-40 hover:opacity-100 text-white'
+                        }`}
+                        style={{ backgroundColor: user.avatarColor }}
+                      >
+                        {user.initials}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-          {/* Target Input with ClientAutocomplete */}
-          <div className={`col-span-6 md:col-span-3 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:block'}`}>
-            <ClientAutocomplete
-              value={quickTarget || (isQuickAddExpanded ? '' : (workspaceMode === 'team' ? 'Polarist' : selectedClientFilter || ''))}
-              onChange={(val) => {
-                setQuickTarget(val);
-                const match = clients.find(
-                  (c) => c.name.toLowerCase() === val.trim().toLowerCase()
-                );
-                if (match) {
-                  setQuickColor(match.color);
-                }
-              }}
-              onSelectClient={(client) => {
-                setQuickTarget(client.name);
-                setQuickColor(client.color);
-              }}
-              clients={clients}
-              placeholder={workspaceMode === 'team' ? 'Polarist' : (selectedClientFilter || 'Cliente...')}
-            />
-          </div>
+              {/* Col 3: Cliente (col-span-6 md:col-span-2) */}
+              <div className={`col-span-6 md:col-span-2 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:block'}`}>
+                <ClientAutocomplete
+                  value={quickTarget || (isQuickAddExpanded ? '' : 'Polarist')}
+                  onChange={(val) => {
+                    setQuickTarget(val);
+                    const match = clients.find(
+                      (c) => c.name.toLowerCase() === val.trim().toLowerCase()
+                    );
+                    if (match) {
+                      setQuickColor(match.color);
+                    }
+                  }}
+                  onSelectClient={(client) => {
+                    setQuickTarget(client.name);
+                    setQuickColor(client.color);
+                  }}
+                  clients={clients}
+                  placeholder="Polarist"
+                />
+              </div>
 
-          {/* Value Input */}
-          <div className={`col-span-3 md:col-span-2 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:block'}`}>
-            <input
-              type="text"
-              value={quickValue}
-              onChange={(e) => setQuickValue(e.target.value)}
-              placeholder="$ Monto USD"
-              className="w-full bg-transparent text-emerald-700 font-mono text-xs sm:text-sm px-2.5 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none font-medium"
-            />
-          </div>
+              {/* Col 4: Dinero USD (col-span-6 md:col-span-2) */}
+              <div className={`col-span-6 md:col-span-2 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:block'}`}>
+                <input
+                  type="text"
+                  value={quickValue}
+                  onChange={(e) => setQuickValue(e.target.value)}
+                  placeholder="$ Monto USD"
+                  className="w-full bg-transparent text-emerald-700 font-mono text-xs sm:text-sm px-2.5 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none font-medium"
+                />
+              </div>
 
-          {/* Deadline + Submit */}
-          <div className={`col-span-3 md:col-span-2 flex items-center gap-2 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:flex'}`}>
-            <input
-              type="date"
-              value={quickDeadline}
-              onChange={(e) => setQuickDeadline(e.target.value)}
-              className="w-full bg-transparent text-zinc-700 font-mono text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
-            />
-            {quickTitle.trim() && (
-              <button
-                type="submit"
-                className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-xs flex-shrink-0 transition-all shadow-sm cursor-pointer"
-              >
-                Agregar
-              </button>
-            )}
-          </div>
+              {/* Col 5: Fecha Límite + Botón Agregar (col-span-12 md:col-span-2) */}
+              <div className={`col-span-12 md:col-span-2 flex items-center gap-2 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:flex'}`}>
+                <input
+                  type="date"
+                  value={quickDeadline}
+                  onChange={(e) => setQuickDeadline(e.target.value)}
+                  className="w-full bg-transparent text-zinc-700 font-mono text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
+                />
+                {quickTitle.trim() && (
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-xs flex-shrink-0 transition-all shadow-sm cursor-pointer"
+                  >
+                    Agregar
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Col 1: Acción / Descripción (col-span-12 md:col-span-5) */}
+              <div className="col-span-12 md:col-span-5 flex items-center gap-2">
+                <div className="flex items-center p-0.5 bg-zinc-100 rounded-md border border-zinc-200/70 text-[10px] flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setQuickTaskType('action')}
+                    className={`px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+                      quickTaskType === 'action'
+                        ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-800'
+                    }`}
+                  >
+                    Acción
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickTaskType('meeting')}
+                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+                      quickTaskType === 'meeting'
+                        ? 'bg-purple-100 text-purple-900 shadow-2xs font-semibold'
+                        : 'text-zinc-500 hover:text-zinc-800'
+                    }`}
+                  >
+                    <Video className="w-2.5 h-2.5" />
+                    <span>Meeting</span>
+                  </button>
+                </div>
+
+                <input
+                  type="text"
+                  value={quickTitle}
+                  onChange={(e) => {
+                    setQuickTitle(e.target.value);
+                    if (!isQuickAddExpanded && e.target.value) {
+                      setIsQuickAddExpanded(true);
+                    }
+                  }}
+                  placeholder={
+                    selectedClientFilter
+                      ? `+ Escribir nueva acción para ${selectedClientFilter}...`
+                      : '+ Escribir nueva acción y presionar Enter...'
+                  }
+                  className="flex-1 min-w-0 bg-transparent text-zinc-900 placeholder:text-zinc-400 text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
+                />
+              </div>
+
+              {/* Col 2: Cliente (col-span-6 md:col-span-3) */}
+              <div className={`col-span-6 md:col-span-3 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:block'}`}>
+                <ClientAutocomplete
+                  value={quickTarget || (isQuickAddExpanded ? '' : selectedClientFilter || '')}
+                  onChange={(val) => {
+                    setQuickTarget(val);
+                    const match = clients.find(
+                      (c) => c.name.toLowerCase() === val.trim().toLowerCase()
+                    );
+                    if (match) {
+                      setQuickColor(match.color);
+                    }
+                  }}
+                  onSelectClient={(client) => {
+                    setQuickTarget(client.name);
+                    setQuickColor(client.color);
+                  }}
+                  clients={clients}
+                  placeholder={selectedClientFilter || 'Cliente...'}
+                />
+              </div>
+
+              {/* Col 3: Dinero USD (col-span-3 md:col-span-2) */}
+              <div className={`col-span-3 md:col-span-2 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:block'}`}>
+                <input
+                  type="text"
+                  value={quickValue}
+                  onChange={(e) => setQuickValue(e.target.value)}
+                  placeholder="$ Monto USD"
+                  className="w-full bg-transparent text-emerald-700 font-mono text-xs sm:text-sm px-2.5 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none font-medium"
+                />
+              </div>
+
+              {/* Col 4: Fecha Límite + Botón Agregar (col-span-3 md:col-span-2) */}
+              <div className={`col-span-3 md:col-span-2 flex items-center gap-2 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:flex'}`}>
+                <input
+                  type="date"
+                  value={quickDeadline}
+                  onChange={(e) => setQuickDeadline(e.target.value)}
+                  className="w-full bg-transparent text-zinc-700 font-mono text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
+                />
+                {quickTitle.trim() && (
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-xs flex-shrink-0 transition-all shadow-sm cursor-pointer"
+                  >
+                    Agregar
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </form>
 
@@ -944,6 +1050,7 @@ export const BoardTable: React.FC<BoardTableProps> = ({
                     onDeleteSubtask={onDeleteSubtask}
                     onUpdateNotes={onUpdateNotes}
                     onNavigateToClients={onNavigateToClients}
+                    onUpdateUserEmail={onUpdateUserEmail}
                   />
                 );
               })}

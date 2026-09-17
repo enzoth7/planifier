@@ -32,23 +32,34 @@ export const CompletedTable: React.FC<CompletedTableProps> = ({
 
   return (
     <div className="rounded-xl border border-white/70 bg-white/90 backdrop-blur-md overflow-hidden shadow-xl shadow-zinc-900/5">
-      {/* 4 Columns Clean Header */}
+      {/* Clean Header */}
       <div className="hidden md:flex items-center px-4 sm:px-6 py-3 bg-zinc-50/70 border-b border-zinc-200/70 gap-3 sm:gap-4 text-xs font-semibold tracking-wider text-zinc-500 select-none">
         {/* Spacer for alignment with BoardTable */}
         <div className="w-9 flex-shrink-0" />
 
-        {/* 4 Main Columns */}
+        {/* Main Columns */}
         <div className="flex-1 grid grid-cols-12 gap-3 sm:gap-6 items-center">
           {/* Col 1: Acción / Descripción */}
-          <div className="col-span-5 pl-7 sm:pl-8">ACCIÓN / DESCRIPCIÓN</div>
+          <div className={`${workspaceMode === 'team' ? 'col-span-4' : 'col-span-5'} pl-7 sm:pl-8`}>
+            ACCIÓN / DESCRIPCIÓN
+          </div>
 
-          {/* Col 2: Cliente */}
-          <div className="col-span-3 pl-2 sm:pl-3">CLIENTE</div>
+          {/* Col 2 (Solo modo team): ENCARGADO */}
+          {workspaceMode === 'team' && (
+            <div className="col-span-2 pl-2 sm:pl-3 text-xs font-semibold tracking-wider text-zinc-500">
+              ENCARGADO
+            </div>
+          )}
 
-          {/* Col 3: Dinero (USD) */}
+          {/* Col Cliente */}
+          <div className={`${workspaceMode === 'team' ? 'col-span-2' : 'col-span-3'} pl-2 sm:pl-3`}>
+            CLIENTE
+          </div>
+
+          {/* Col Dinero (USD) */}
           <div className="col-span-2 pl-1 sm:pl-2">DINERO (USD)</div>
 
-          {/* Col 4: Fecha en que se completó */}
+          {/* Col Fecha en que se completó */}
           <div className="col-span-2 pl-1 sm:pl-2">FECHA COMPLETADO</div>
         </div>
       </div>
@@ -84,10 +95,10 @@ export const CompletedTable: React.FC<CompletedTableProps> = ({
                   {/* Left Spacer for alignment with BoardTable */}
                   <div className="w-9 flex-shrink-0" />
 
-                  {/* 4 COLUMNS GRID */}
+                  {/* COLUMNS GRID */}
                   <div className="flex-1 grid grid-cols-12 gap-3 sm:gap-6 items-start sm:items-center min-w-0">
                     {/* COLUMNA 1: Acción / Descripción */}
-                    <div className="col-span-12 md:col-span-5 min-w-0 pr-2">
+                    <div className={`col-span-12 ${workspaceMode === 'team' ? 'md:col-span-4' : 'md:col-span-5'} min-w-0 pr-2`}>
                       <div className="flex items-start gap-2.5">
                         {/* Completed Check Badge / Restore button */}
                         <button
@@ -101,15 +112,6 @@ export const CompletedTable: React.FC<CompletedTableProps> = ({
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            {workspaceMode === 'team' && user && (
-                              <span
-                                className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-2xs flex-shrink-0"
-                                style={{ backgroundColor: user.avatarColor }}
-                                title={`Responsable: ${user.name}`}
-                              >
-                                {user.initials}
-                              </span>
-                            )}
                             {item.taskType === 'meeting' && (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200/80 flex-shrink-0">
                                 <Video className="w-2.5 h-2.5 text-amber-600" />
@@ -155,8 +157,23 @@ export const CompletedTable: React.FC<CompletedTableProps> = ({
                     </div>
                   </div>
 
-                    {/* COLUMNA 2: Cliente */}
-                    <div className="col-span-6 md:col-span-3 min-w-0">
+                    {/* COLUMNA 2 (Solo modo team): ENCARGADO */}
+                    {workspaceMode === 'team' && (
+                      <div className="col-span-6 md:col-span-2 min-w-0 flex items-center">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-zinc-200/80 bg-white/90 text-zinc-700 shadow-2xs">
+                          <span
+                            className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-2xs flex-shrink-0"
+                            style={{ backgroundColor: user.avatarColor }}
+                          >
+                            {user.initials}
+                          </span>
+                          <span className="truncate max-w-[80px] font-medium">{user.name}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* COLUMNA CLIENTE */}
+                    <div className={`col-span-6 ${workspaceMode === 'team' ? 'md:col-span-2' : 'md:col-span-3'} min-w-0`}>
                       <div
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${colorDef.bg} ${colorDef.border} ${colorDef.text} opacity-90`}
                       >

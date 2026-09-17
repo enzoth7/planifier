@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
@@ -10,7 +10,7 @@ import {
   Edit2,
   Video,
 } from 'lucide-react';
-import { ActionItem, ClientItem, VintageColorKey, WorkspaceMode, getUserByEmail } from '../types';
+import { ActionItem, ClientItem, VintageColorKey, WorkspaceMode, getUserByEmail, APP_USERS } from '../types';
 import { formatDisplayDate } from '../utils/dates';
 import { ClientSelectPopover } from './ClientSelectPopover';
 import { SubtaskLines } from './SubtaskLines';
@@ -34,6 +34,7 @@ interface BoardRowProps {
   onDeleteSubtask: (itemId: string, subtaskId: string) => void;
   onUpdateNotes: (itemId: string, notes: string) => void;
   onNavigateToClients?: () => void;
+  onUpdateUserEmail?: (id: string, userEmail: string) => void;
 }
 
 export const BoardRow: React.FC<BoardRowProps> = ({
@@ -55,6 +56,7 @@ export const BoardRow: React.FC<BoardRowProps> = ({
   onDeleteSubtask,
   onUpdateNotes,
   onNavigateToClients,
+  onUpdateUserEmail,
 }) => {
   const {
     attributes,
@@ -69,6 +71,22 @@ export const BoardRow: React.FC<BoardRowProps> = ({
   const [valueInput, setValueInput] = useState(item.value.toString());
 
   const [isEditingDate, setIsEditingDate] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    if (isUserMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -116,10 +134,10 @@ export const BoardRow: React.FC<BoardRowProps> = ({
           <GripVertical className="w-4 h-4" />
         </div>
 
-        {/* 4 COLUMNS GRID */}
+        {/* COLUMNS GRID */}
         <div className="flex-1 grid grid-cols-12 gap-3 sm:gap-6 items-start sm:items-center min-w-0">
-          {/* COLUMNA 1 (~38% ancho / 5 cols out of 12): Acción / Descripción */}
-          <div className="col-span-12 md:col-span-5 min-w-0 pr-2">
+          {/* COLUMNA 1: Acción / Descripción */}
+          <div className={`col-span-12 ${workspaceMode === 'team' ? 'md:col-span-4' : 'md:col-span-5'} min-w-0 pr-2`}>
             <div className="flex items-start gap-2.5">
               {/* Checkbox */}
               <button
@@ -138,18 +156,6 @@ export const BoardRow: React.FC<BoardRowProps> = ({
               <div className="flex-1 min-w-0">
                 {/* Badges y Título en el mismo renglón */}
                 <div className="flex items-center gap-2 min-w-0">
-                  {/* Badge de Responsable en modo Equipo Polarist */}
-                  {workspaceMode === 'team' && (
-                    <span
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white shadow-2xs flex-shrink-0"
-                      style={{ backgroundColor: assignedUser.avatarColor }}
-                      title={`Responsable: ${assignedUser.name} (${assignedUser.email})`}
-                    >
-                      <span>{assignedUser.initials}</span>
-                      <span className="font-normal opacity-90 hidden sm:inline">{assignedUser.name}</span>
-                    </span>
-                  )}
-
                   {/* Badge del tipo de tarea: Acción vs Meeting */}
                   {item.taskType === 'meeting' ? (
                     <span
@@ -209,8 +215,74 @@ export const BoardRow: React.FC<BoardRowProps> = ({
             </div>
           </div>
 
-          {/* COLUMNA 2 (~25% ancho / 3 cols out of 12): Cliente (Badge cromático y selector de cliente) */}
-          <div className="col-span-6 md:col-span-3 min-w-0">
+          {/* COLUMNA 2 (Solo modo team): ENCARGADO */}
+          {workspaceMode === 'team' && (
+            <div className="col-span-6 md:col-span-2 min-w-0 flex items-center relative" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                className="group/assign inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-zinc-200/80 bg-white/90 hover:bg-zinc-50 hover:border-zinc-300 shadow-2xs transition-all cursor-pointer text-zinc-800 focus:outline-none"
+                title="Cambiar encargado"
+              >
+                <span
+                  className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-2xs flex-shrink-0"
+                  style={{ backgroundColor: assignedUser.avatarColor }}
+                >
+                  {assignedUser.initials}
+                </span>
+                <span className="truncate max-w-[80px] font-medium">{assignedUser.name}</span>
+                <ChevronDown className="w-3 h-3 text-zinc-400 group-hover/assign:text-zinc-600 transition-transform" />
+              </button>
+
+              {/* Popover selector de encargado */}
+              {isUserMenuOpen && (
+                <div
+                  className={`absolute z-50 left-0 ${
+                    openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+                  } w-48 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-zinc-200 p-1.5 animate-in fade-in zoom-in-95 duration-100`}
+                >
+                  <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-100 mb-1">
+                    Asignar Encargado
+                  </div>
+                  <div className="space-y-0.5">
+                    {APP_USERS.map((user) => {
+                      const isCurrent =
+                        (item.userEmail || APP_USERS[0].email).toLowerCase() === user.email.toLowerCase();
+                      return (
+                        <button
+                          key={user.id}
+                          type="button"
+                          onClick={() => {
+                            if (onUpdateUserEmail) {
+                              onUpdateUserEmail(item.id, user.email);
+                            }
+                            setIsUserMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                            isCurrent ? 'bg-zinc-100 font-semibold text-zinc-900' : 'hover:bg-zinc-50 text-zinc-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-2xs flex-shrink-0"
+                              style={{ backgroundColor: user.avatarColor }}
+                            >
+                              {user.initials}
+                            </span>
+                            <span className="truncate">{user.name}</span>
+                          </div>
+                          {isCurrent && <Check className="w-3.5 h-3.5 text-zinc-800 flex-shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* COLUMNA CLIENTE: Cliente (Badge cromático y selector de cliente) */}
+          <div className={`col-span-6 ${workspaceMode === 'team' ? 'md:col-span-2' : 'md:col-span-3'} min-w-0`}>
             <ClientSelectPopover
               target={item.target}
               currentColor={item.tagColor}
