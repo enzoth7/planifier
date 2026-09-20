@@ -5,6 +5,7 @@ import {
   LayoutGrid,
   Users,
   CalendarDays,
+  WalletCards,
   Target,
   User,
   LogOut,
@@ -29,6 +30,7 @@ interface HeaderProps {
   clientsCount: number;
   objectiveTarget?: number;
   objectiveCompleted?: number;
+  financeBalance?: number;
   onOpenCreateModal: () => void;
   onOpenCreateClientModal?: () => void;
 }
@@ -51,12 +53,15 @@ export const Header: React.FC<HeaderProps> = ({
   clientsCount,
   objectiveTarget = 0,
   objectiveCompleted = 0,
+  financeBalance = 0,
   onOpenCreateModal,
   onOpenCreateClientModal,
 }) => {
   const moneyLabel =
     activeTab === 'objectives'
       ? 'Meta del mes:'
+      : activeTab === 'finance'
+      ? 'Caja disponible:'
       : activeTab === 'clients'
       ? 'Total clientes:'
       : activeTab === 'completed'
@@ -176,6 +181,8 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="font-mono font-semibold text-zinc-900 text-sm tracking-tight">
               {activeTab === 'objectives'
                 ? `$${objectiveCompleted.toLocaleString('en-US')} / $${objectiveTarget.toLocaleString('en-US')} USD`
+                : activeTab === 'finance'
+                ? `$${financeBalance.toLocaleString('en-US', { maximumFractionDigits: 0 })} USD`
                 : activeTab === 'clients'
                 ? `${clientsCount} registrados`
                 : `$${displayedValue.toLocaleString('en-US')} USD`}
@@ -220,18 +227,18 @@ export const Header: React.FC<HeaderProps> = ({
 
 
       {/* Fila Inferior: Filtros de Miembros (Modo Team) / Contexto + Pestañas de Vista */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2.5 border-t border-zinc-100">
+      <div className="flex flex-col items-stretch justify-between gap-3 border-t border-zinc-100 pt-2.5 lg:flex-row lg:items-center">
         {/* Izquierda: En modo Polarist, selector para filtrar por miembro */}
         <div className="flex items-center flex-wrap gap-1.5 text-xs">
           {currentEndpoint === 'polarist' ? (
-            <div className="flex items-center gap-1 p-1 bg-zinc-100/80 rounded-lg border border-zinc-200/60">
-              <span className="text-[11px] font-semibold text-zinc-400 px-2 uppercase tracking-wider">
+            <div className="flex w-full max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-zinc-200/60 bg-zinc-100/80 p-1 lg:w-auto">
+              <span className="shrink-0 px-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                 Miembro:
               </span>
               <button
                 type="button"
                 onClick={() => onSelectTeamMember(null)}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   selectedTeamMemberEmail === null
                     ? 'bg-white text-zinc-900 shadow-xs font-semibold'
                     : 'text-zinc-500 hover:text-zinc-800'
@@ -247,7 +254,7 @@ export const Header: React.FC<HeaderProps> = ({
                     key={user.id}
                     type="button"
                     onClick={() => onSelectTeamMember(user.email)}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all cursor-pointer ${
+                    className={`inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-white text-zinc-900 shadow-xs font-semibold'
                         : 'text-zinc-500 hover:text-zinc-800'
@@ -278,7 +285,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Derecha: Selector de Vistas (Tablero, Calendario, Completados, Clientes) */}
-        <div className="flex items-center justify-between sm:justify-end gap-2">
+        <div className="flex min-w-0 items-center justify-between gap-2 lg:justify-end">
           <div className="flex max-w-full items-center overflow-x-auto p-1 bg-zinc-100/90 rounded-lg border border-zinc-200/60 text-xs">
             <button
               type="button"
@@ -316,6 +323,21 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Target className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Objetivos</span>
+              </button>
+            )}
+
+            {currentEndpoint === 'polarist' && (
+              <button
+                type="button"
+                onClick={() => onTabChange('finance')}
+                className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-md transition-all font-medium cursor-pointer ${
+                  activeTab === 'finance'
+                    ? 'bg-white text-zinc-900 shadow-xs'
+                    : 'text-zinc-500 hover:text-zinc-800'
+                }`}
+              >
+                <WalletCards className="h-3.5 w-3.5 text-amber-600" />
+                <span>Finanzas</span>
               </button>
             )}
 
@@ -396,4 +418,3 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-

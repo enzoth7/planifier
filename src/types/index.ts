@@ -178,7 +178,7 @@ export interface ActionItem {
 
 export type TabFilter = 'all' | 'pending' | 'completed';
 
-export type TabType = 'board' | 'calendar' | 'objectives' | 'completed' | 'clients';
+export type TabType = 'board' | 'calendar' | 'objectives' | 'finance' | 'completed' | 'clients';
 
 export interface ObjectiveItem {
   id: string;

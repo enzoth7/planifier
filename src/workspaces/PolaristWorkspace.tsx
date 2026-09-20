@@ -7,6 +7,8 @@ import { CalendarView } from '../components/CalendarView';
 import { CompletedTable } from '../components/CompletedTable';
 import { ClientsTable } from '../components/ClientsTable';
 import { ObjectivesView } from '../components/ObjectivesView';
+import { FinanceView } from '../components/FinanceView';
+import { FINANCE_SNAPSHOT } from '../data/finance';
 
 export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
   actions,
@@ -167,6 +169,7 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
         clientsCount={polaristClients.length}
         objectiveTarget={selectedObjective?.revenueTarget || 0}
         objectiveCompleted={selectedObjective?.actualRevenue || 0}
+        financeBalance={FINANCE_SNAPSHOT.currentCash}
         onOpenCreateModal={() => onOpenCreateModal()}
         onOpenCreateClientModal={onOpenCreateClientModal}
       />
@@ -218,6 +221,8 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
           onUpdateObjective={onUpdateObjective}
           onSelectedObjectiveChange={(objective) => setSelectedObjectiveMonth(objective.month)}
         />
+      ) : activeTab === 'finance' ? (
+        <FinanceView />
       ) : activeTab === 'completed' ? (
         <CompletedTable
           items={polaristCompletedActions}

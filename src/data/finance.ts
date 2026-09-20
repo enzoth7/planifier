@@ -1,0 +1,32 @@
+export const FINANCE_SNAPSHOT = {
+  updatedAt: 'Movimientos reales hasta el 19 de septiembre de 2026',
+  currentCash: 520.83,
+  projectedMonthEnd: 3002,
+  actualIncome: 1437.5,
+  actualExpenses: 1410.11,
+  currentMonth: {
+    label: 'Septiembre',
+    income: 342.5,
+    expenses: 236.8,
+    net: 105.7,
+  },
+  forecast: [
+    { month: 'Sep', balance: 3002 },
+    { month: 'Oct', balance: 10126 },
+    { month: 'Nov', balance: 9058 },
+    { month: 'Dic', balance: 3049 },
+    { month: 'Ene', balance: -1935 },
+    { month: 'Feb', balance: -2521 },
+    { month: 'Mar', balance: 2362 },
+  ],
+  expenses: [
+    { label: 'Retiros de socios', amount: 575 },
+    { label: 'Marketing', amount: 312.5 },
+    { label: 'Cloud e infraestructura', amount: 247.08 },
+    { label: 'Legal y contable', amount: 137.5 },
+    { label: 'Equipamiento', amount: 71.59 },
+    { label: 'Impuestos', amount: 29.18 },
+    { label: 'Viajes y transporte', amount: 25.28 },
+    { label: 'Otros', amount: 12 },
+  ],
+} as const;
