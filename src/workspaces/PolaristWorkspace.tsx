@@ -104,17 +104,6 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
     [objectives, selectedObjectiveMonth]
   );
 
-  const objectiveCompletedValue = useMemo(() => {
-    if (!selectedObjective) return 0;
-    return polaristCompletedActions
-      .filter(
-        (item) =>
-          item.completedAt?.slice(0, 7) === selectedObjective.month ||
-          item.deadline?.slice(0, 7) === selectedObjective.month
-      )
-      .reduce((sum, item) => sum + (item.value || 0), 0);
-  }, [polaristCompletedActions, selectedObjective]);
-
   const handleQuickAdd = (data: {
     title: string;
     target: string;
@@ -177,7 +166,7 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
         completedCount={polaristCompletedActions.length}
         clientsCount={polaristClients.length}
         objectiveTarget={selectedObjective?.revenueTarget || 0}
-        objectiveCompleted={objectiveCompletedValue}
+        objectiveCompleted={selectedObjective?.actualRevenue || 0}
         onOpenCreateModal={() => onOpenCreateModal()}
         onOpenCreateClientModal={onOpenCreateClientModal}
       />

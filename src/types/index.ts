@@ -187,6 +187,7 @@ export interface ObjectiveItem {
   monthlyGoal: string;
   quarterlyGoal?: string;
   revenueTarget: number;
+  actualRevenue: number;
   milestones: SubtaskItem[];
   updatedAt?: string;
 }

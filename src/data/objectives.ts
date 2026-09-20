@@ -10,6 +10,7 @@ export const INITIAL_OBJECTIVES: ObjectiveItem[] = [
     quarterlyGoal:
       'Construir estabilidad con una facturación mensual sostenida entre USD 3.000 y USD 7.000.',
     revenueTarget: 3000,
+    actualRevenue: 0,
     milestones: [
       { id: 'aug-1', text: 'Enviar todo para el concurso Pro Diseño', done: true },
       { id: 'aug-2', text: 'Completar 3 formaciones de empresas', done: false },
@@ -25,6 +26,7 @@ export const INITIAL_OBJECTIVES: ObjectiveItem[] = [
     quarterlyGoal:
       'Construir estabilidad con una facturación mensual sostenida entre USD 3.000 y USD 7.000.',
     revenueTarget: 3000,
+    actualRevenue: 0,
     milestones: [
       { id: 'sep-1', text: 'Llegar a 2.000 seguidores en Instagram', done: false },
       { id: 'sep-2', text: 'Armar la propuesta para Semilla ANDE', done: false },
@@ -40,6 +42,7 @@ export const INITIAL_OBJECTIVES: ObjectiveItem[] = [
     monthlyGoal: 'Consolidar la expansión comercial y facturar USD 7.000',
     quarterlyGoal: 'Expansión a México.',
     revenueTarget: 7000,
+    actualRevenue: 0,
     milestones: [
       { id: 'oct-1', text: 'Presentarse a Semilla ANDE', done: false },
       { id: 'oct-2', text: 'Completar 4 grupos de asesorías', done: false },
@@ -54,6 +57,7 @@ export const INITIAL_OBJECTIVES: ObjectiveItem[] = [
     monthlyGoal: 'Sostener el crecimiento y facturar USD 3.000',
     quarterlyGoal: 'Expansión a México.',
     revenueTarget: 3000,
+    actualRevenue: 0,
     milestones: [
       { id: 'nov-1', text: 'Completar 4 formaciones de empresas', done: false },
     ],
@@ -65,6 +69,7 @@ export const INITIAL_OBJECTIVES: ObjectiveItem[] = [
     monthlyGoal: 'Fortalecer el networking y facturar USD 1.000',
     quarterlyGoal: 'Expansión a México.',
     revenueTarget: 1000,
+    actualRevenue: 0,
     milestones: [
       { id: 'dec-1', text: 'Llegar a 10.000 seguidores en Instagram', done: false },
     ],

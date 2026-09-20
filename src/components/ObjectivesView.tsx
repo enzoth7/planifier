@@ -1,12 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   CalendarRange,
   Check,
   CheckCircle2,
   Circle,
   CircleDollarSign,
-  Flag,
   Plus,
+  Save,
   Target,
   TrendingUp,
 } from 'lucide-react';
@@ -38,12 +38,17 @@ export const ObjectivesView: React.FC<ObjectivesViewProps> = ({
   }, [objectives]);
   const [selectedMonth, setSelectedMonth] = useState(initialMonth);
   const [newMilestone, setNewMilestone] = useState('');
+  const [revenueDraft, setRevenueDraft] = useState('0');
 
   const selected =
     objectives.find((objective) => objective.month === selectedMonth) || objectives[0];
 
+  useEffect(() => {
+    setRevenueDraft(String(selected?.actualRevenue || 0));
+  }, [selected?.actualRevenue, selected?.id]);
+
   const monthMetrics = useMemo(() => {
-    if (!selected) return { active: 0, completed: 0, completedValue: 0 };
+    if (!selected) return { active: 0, completed: 0 };
     const belongsToMonth = (item: ActionItem) =>
       item.deadline?.slice(0, 7) === selected.month ||
       item.completedAt?.slice(0, 7) === selected.month;
@@ -52,7 +57,6 @@ export const ObjectivesView: React.FC<ObjectivesViewProps> = ({
     return {
       active: monthActive.length,
       completed: monthCompleted.length,
-      completedValue: monthCompleted.reduce((sum, item) => sum + (item.value || 0), 0),
     };
   }, [activeActions, completedActions, selected]);
 
@@ -71,7 +75,7 @@ export const ObjectivesView: React.FC<ObjectivesViewProps> = ({
     ? Math.round((completedMilestones / selected.milestones.length) * 100)
     : 0;
   const revenueProgress = selected.revenueTarget
-    ? Math.min(100, Math.round((monthMetrics.completedValue / selected.revenueTarget) * 100))
+    ? Math.min(100, Math.round((selected.actualRevenue / selected.revenueTarget) * 100))
     : 0;
 
   const updateSelected = (updated: ObjectiveItem) => {
@@ -102,6 +106,13 @@ export const ObjectivesView: React.FC<ObjectivesViewProps> = ({
     setNewMilestone('');
   };
 
+  const saveRevenue = (event: React.FormEvent) => {
+    event.preventDefault();
+    const actualRevenue = Math.max(0, Number(revenueDraft) || 0);
+    updateSelected({ ...selected, actualRevenue });
+    setRevenueDraft(String(actualRevenue));
+  };
+
   const selectMonth = (month: string) => {
     setSelectedMonth(month);
     const objective = objectives.find((item) => item.month === month);
@@ -113,10 +124,6 @@ export const ObjectivesView: React.FC<ObjectivesViewProps> = ({
       <div className="border-b border-zinc-100 px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-              <Target className="h-3.5 w-3.5" />
-              Objetivos Polarist 2026
-            </div>
             <h2 className="text-xl font-semibold tracking-tight text-zinc-950">Qué queremos lograr este mes</h2>
             <p className="mt-1 max-w-2xl text-sm text-zinc-500">
               Una vista simple para conectar las acciones del equipo con los resultados mensuales.
@@ -150,28 +157,45 @@ export const ObjectivesView: React.FC<ObjectivesViewProps> = ({
         <div className="rounded-xl border border-zinc-200 bg-zinc-950 p-5 text-white lg:col-span-7">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-200">
-                <Flag className="h-3 w-3 text-emerald-400" />
-                Foco mensual
-              </div>
               <h3 className="max-w-2xl text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
                 {selected.monthlyGoal}
               </h3>
             </div>
-            <span className="font-mono text-xs text-zinc-400">{selected.month}</span>
+            <span className="whitespace-nowrap font-mono text-xs text-zinc-400">{selected.month}</span>
           </div>
 
           <div className="mt-8">
             <div className="mb-2 flex items-end justify-between gap-3">
-              <div>
-                <p className="text-xs text-zinc-400">Facturación completada</p>
-                <p className="mt-1 font-mono text-xl font-semibold">
-                  ${formatMoney(monthMetrics.completedValue)}
-                  <span className="ml-1 text-sm font-normal text-zinc-400">
-                    / ${formatMoney(selected.revenueTarget)} USD
-                  </span>
+              <form onSubmit={saveRevenue} className="min-w-0 flex-1">
+                <label htmlFor="actual-revenue" className="text-xs text-zinc-400">Cuánto vamos facturando</label>
+                <div className="mt-1 flex max-w-md items-center gap-2">
+                  <div className="flex min-h-11 min-w-0 flex-1 items-center rounded-lg border border-white/15 bg-white/10 px-3 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-400/20">
+                    <span className="mr-2 font-mono text-sm text-zinc-400">$</span>
+                    <input
+                      id="actual-revenue"
+                      type="number"
+                      min="0"
+                      step="100"
+                      inputMode="decimal"
+                      value={revenueDraft}
+                      onChange={(event) => setRevenueDraft(event.target.value)}
+                      className="min-w-0 flex-1 bg-transparent font-mono text-lg font-semibold text-white outline-none"
+                    />
+                    <span className="ml-2 text-xs text-zinc-400">USD</span>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={Number(revenueDraft) === selected.actualRevenue}
+                    className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-emerald-400 px-3 text-xs font-semibold text-zinc-950 transition hover:bg-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Save className="h-3.5 w-3.5" />
+                    Guardar
+                  </button>
+                </div>
+                <p className="mt-1.5 text-xs text-zinc-500">
+                  Meta mensual: ${formatMoney(selected.revenueTarget)} USD
                 </p>
-              </div>
+              </form>
               <span className="font-mono text-sm font-semibold text-emerald-400">{revenueProgress}%</span>
             </div>
             <div
@@ -290,7 +314,7 @@ export const ObjectivesView: React.FC<ObjectivesViewProps> = ({
           <p className="mt-1 text-sm text-zinc-600">de los resultados clave cumplidos.</p>
           <div className="my-5 h-px bg-zinc-200" />
           <p className="text-xs leading-relaxed text-zinc-500">
-            La facturación avanza al completar acciones con monto. Los resultados clave se actualizan manualmente para que el equipo confirme el resultado real, no solo la tarea.
+            La facturación y los resultados clave se actualizan manualmente para que el equipo confirme el resultado real, no solo las tareas realizadas.
           </p>
         </div>
       </div>

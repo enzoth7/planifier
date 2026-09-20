@@ -3,6 +3,31 @@ import { ActionItem, ClientItem, ClientType, ClientOwner, ObjectiveItem, TaskTyp
 import { INITIAL_ACTIONS, INITIAL_CLIENTS } from '../utils/storage';
 import { INITIAL_OBJECTIVES } from '../data/objectives';
 
+const parseObjectiveNotes = (rawNotes: unknown, fallbackQuarterlyGoal = '') => {
+  if (typeof rawNotes !== 'string' || !rawNotes.trim()) {
+    return { quarterlyGoal: fallbackQuarterlyGoal, actualRevenue: 0 };
+  }
+
+  try {
+    const parsed = JSON.parse(rawNotes) as { quarterlyGoal?: unknown; actualRevenue?: unknown };
+    if (parsed && typeof parsed === 'object') {
+      return {
+        quarterlyGoal: typeof parsed.quarterlyGoal === 'string' ? parsed.quarterlyGoal : fallbackQuarterlyGoal,
+        actualRevenue: Math.max(0, Number(parsed.actualRevenue) || 0),
+      };
+    }
+  } catch {
+    // Los objetivos anteriores guardaban el objetivo trimestral como texto plano.
+  }
+
+  return { quarterlyGoal: rawNotes, actualRevenue: 0 };
+};
+
+const serializeObjectiveNotes = (objective: Pick<ObjectiveItem, 'quarterlyGoal' | 'actualRevenue'>) => JSON.stringify({
+  quarterlyGoal: objective.quarterlyGoal || '',
+  actualRevenue: Math.max(0, Number(objective.actualRevenue) || 0),
+});
+
 // Las tablas persistentes ya existentes conservan este namespace. Renombrarlas
 // requiere una migración de base de datos; no debe hacerse desde el cliente.
 const ACTIONS_TABLE = 'plannifier_actions';
@@ -421,7 +446,7 @@ export const actionsService = {
         color: 'emerald',
         value: objective.revenueTarget,
         deadline: `${objective.month}-${objective.month.endsWith('-02') ? '28' : ['04', '06', '09', '11'].includes(objective.month.slice(5)) ? '30' : '31'}`,
-        notes: objective.quarterlyGoal || '',
+        notes: serializeObjectiveNotes(objective),
         subtasks: objective.milestones,
         created_at: new Date().toISOString(),
         user_email: 'enzothome1@gmail.com',
@@ -445,6 +470,7 @@ export const actionsService = {
     return rows.map((row: any) => {
       const fallback = INITIAL_OBJECTIVES.find((item) => item.id === row.id);
       const month = row.client || row.deadline?.slice(0, 7) || fallback?.month || '';
+      const notes = parseObjectiveNotes(row.notes, fallback?.quarterlyGoal);
       return {
         id: row.id,
         month,
@@ -454,8 +480,9 @@ export const actionsService = {
             new Date(`${month}-01T00:00:00Z`)
           ),
         monthlyGoal: row.title || fallback?.monthlyGoal || 'Definir objetivo mensual',
-        quarterlyGoal: row.notes || fallback?.quarterlyGoal || '',
+        quarterlyGoal: notes.quarterlyGoal,
         revenueTarget: Number(row.value) || 0,
+        actualRevenue: notes.actualRevenue,
         milestones: Array.isArray(row.subtasks) ? row.subtasks : [],
         updatedAt: row.created_at,
       } as ObjectiveItem;
@@ -469,7 +496,7 @@ export const actionsService = {
         title: objective.monthlyGoal,
         client: objective.month,
         value: objective.revenueTarget,
-        notes: objective.quarterlyGoal || '',
+        notes: serializeObjectiveNotes(objective),
         subtasks: objective.milestones,
       })
       .eq('id', objective.id)
