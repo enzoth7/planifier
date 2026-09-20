@@ -6,12 +6,14 @@ import {
   UserProfile,
   AppEndpoint,
   TaskType,
+  ObjectiveItem,
 } from '../types';
 
 export interface WorkspaceProps {
   actions: ActionItem[];
   completedActions: ActionItem[];
   clients: ClientItem[];
+  objectives: ObjectiveItem[];
   currentUser: UserProfile;
   onNavigateEndpoint: (endpoint: AppEndpoint) => void;
   onLogout: () => void;
@@ -25,6 +27,7 @@ export interface WorkspaceProps {
     userEmail?: string;
   }) => void;
   onUpdateAction: (action: ActionItem) => void;
+  onUpdateObjective: (objective: ObjectiveItem) => void;
   onDeleteAction: (id: string) => void;
   onCompleteAction: (id: string) => void;
   onAddClient: (clientData: {

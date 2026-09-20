@@ -5,6 +5,7 @@ import {
   LayoutGrid,
   Users,
   CalendarDays,
+  Target,
   User,
   LogOut,
 } from 'lucide-react';
@@ -26,6 +27,8 @@ interface HeaderProps {
   calendarActiveCount?: number;
   completedCount: number;
   clientsCount: number;
+  objectiveTarget?: number;
+  objectiveCompleted?: number;
   onOpenCreateModal: () => void;
   onOpenCreateClientModal?: () => void;
 }
@@ -46,11 +49,15 @@ export const Header: React.FC<HeaderProps> = ({
   calendarActiveCount,
   completedCount,
   clientsCount,
+  objectiveTarget = 0,
+  objectiveCompleted = 0,
   onOpenCreateModal,
   onOpenCreateClientModal,
 }) => {
   const moneyLabel =
-    activeTab === 'clients'
+    activeTab === 'objectives'
+      ? 'Meta del mes:'
+      : activeTab === 'clients'
       ? 'Total clientes:'
       : activeTab === 'completed'
       ? 'Total completado:'
@@ -167,7 +174,9 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center gap-2 text-xs">
             <span className="text-zinc-500 font-normal">{moneyLabel}</span>
             <span className="font-mono font-semibold text-zinc-900 text-sm tracking-tight">
-              {activeTab === 'clients'
+              {activeTab === 'objectives'
+                ? `$${objectiveCompleted.toLocaleString('en-US')} / $${objectiveTarget.toLocaleString('en-US')} USD`
+                : activeTab === 'clients'
                 ? `${clientsCount} registrados`
                 : `$${displayedValue.toLocaleString('en-US')} USD`}
             </span>
@@ -270,7 +279,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Derecha: Selector de Vistas (Tablero, Calendario, Completados, Clientes) */}
         <div className="flex items-center justify-between sm:justify-end gap-2">
-          <div className="flex items-center p-1 bg-zinc-100/90 rounded-lg border border-zinc-200/60 text-xs">
+          <div className="flex max-w-full items-center overflow-x-auto p-1 bg-zinc-100/90 rounded-lg border border-zinc-200/60 text-xs">
             <button
               type="button"
               onClick={() => onTabChange('board')}
@@ -294,6 +303,21 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               )}
             </button>
+
+            {currentEndpoint === 'polarist' && (
+              <button
+                type="button"
+                onClick={() => onTabChange('objectives')}
+                className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-md transition-all font-medium cursor-pointer ${
+                  activeTab === 'objectives'
+                    ? 'bg-white text-zinc-900 shadow-xs'
+                    : 'text-zinc-500 hover:text-zinc-800'
+                }`}
+              >
+                <Target className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Objetivos</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -372,5 +396,4 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-
 

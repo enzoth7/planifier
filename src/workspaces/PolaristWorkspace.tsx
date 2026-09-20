@@ -6,16 +6,19 @@ import { BoardTable } from '../components/BoardTable';
 import { CalendarView } from '../components/CalendarView';
 import { CompletedTable } from '../components/CompletedTable';
 import { ClientsTable } from '../components/ClientsTable';
+import { ObjectivesView } from '../components/ObjectivesView';
 
 export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
   actions,
   completedActions,
   clients,
+  objectives,
   currentUser,
   onNavigateEndpoint,
   onLogout,
   onAddAction,
   onUpdateAction,
+  onUpdateObjective,
   onDeleteAction,
   onCompleteAction,
   onAddClient,
@@ -41,6 +44,12 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('board');
   const [selectedTeamMemberEmail, setSelectedTeamMemberEmail] = useState<string | null>(null);
+  const [selectedObjectiveMonth, setSelectedObjectiveMonth] = useState(() => {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    return objectives.some((objective) => objective.month === currentMonth)
+      ? currentMonth
+      : objectives[0]?.month || '';
+  });
   const [calendarStats, setCalendarStats] = useState<{ totalValue: number; count: number }>({
     totalValue: 0,
     count: 0,
@@ -89,6 +98,22 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
   const completedValue = useMemo(() => {
     return polaristCompletedActions.reduce((acc, curr) => acc + (curr.value || 0), 0);
   }, [polaristCompletedActions]);
+
+  const selectedObjective = useMemo(
+    () => objectives.find((objective) => objective.month === selectedObjectiveMonth) || objectives[0],
+    [objectives, selectedObjectiveMonth]
+  );
+
+  const objectiveCompletedValue = useMemo(() => {
+    if (!selectedObjective) return 0;
+    return polaristCompletedActions
+      .filter(
+        (item) =>
+          item.completedAt?.slice(0, 7) === selectedObjective.month ||
+          item.deadline?.slice(0, 7) === selectedObjective.month
+      )
+      .reduce((sum, item) => sum + (item.value || 0), 0);
+  }, [polaristCompletedActions, selectedObjective]);
 
   const handleQuickAdd = (data: {
     title: string;
@@ -151,6 +176,8 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
         activeCount={polaristActions.length}
         completedCount={polaristCompletedActions.length}
         clientsCount={polaristClients.length}
+        objectiveTarget={selectedObjective?.revenueTarget || 0}
+        objectiveCompleted={objectiveCompletedValue}
         onOpenCreateModal={() => onOpenCreateModal()}
         onOpenCreateClientModal={onOpenCreateClientModal}
       />
@@ -193,6 +220,14 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
           onUpdateDeadline={onUpdateDeadline || (() => {})}
           onOpenCreateModal={onOpenCreateModal}
           onVisibleRangeStatsChange={setCalendarStats}
+        />
+      ) : activeTab === 'objectives' ? (
+        <ObjectivesView
+          objectives={objectives}
+          activeActions={polaristActions}
+          completedActions={polaristCompletedActions}
+          onUpdateObjective={onUpdateObjective}
+          onSelectedObjectiveChange={(objective) => setSelectedObjectiveMonth(objective.month)}
         />
       ) : activeTab === 'completed' ? (
         <CompletedTable

@@ -10,6 +10,7 @@ import {
   WorkspaceMode,
   TaskType,
   AppEndpoint,
+  ObjectiveItem,
 } from './types';
 import { loadStoredActions, saveStoredActions, loadStoredClients, saveStoredClients } from './utils/storage';
 import { actionsService } from './services/actionsService';
@@ -28,11 +29,13 @@ import { ActionModal } from './components/ActionModal';
 import { ClientModal } from './components/ClientModal';
 import { LoginScreen } from './components/LoginScreen';
 import { Loader2 } from 'lucide-react';
+import { INITIAL_OBJECTIVES } from './data/objectives';
 
 export const App: React.FC = () => {
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [completedActions, setCompletedActions] = useState<ActionItem[]>([]);
   const [clients, setClients] = useState<ClientItem[]>([]);
+  const [objectives, setObjectives] = useState<ObjectiveItem[]>(INITIAL_OBJECTIVES);
   const [isLoading, setIsLoading] = useState(true);
 
   // Router / Endpoint State: 'enzo' | 'cristian' | 'julieta' | 'polarist'
@@ -164,10 +167,18 @@ export const App: React.FC = () => {
           actionsService.fetchClients(),
         ]);
 
+        let objectivesData = INITIAL_OBJECTIVES;
+        try {
+          objectivesData = await actionsService.fetchObjectives();
+        } catch (objectiveError) {
+          console.warn('No se pudieron sincronizar los objetivos; se usa la copia importada.', objectiveError);
+        }
+
         if (isMounted) {
           setActions(activeData);
           setCompletedActions(completedData);
           setClients(clientsData);
+          setObjectives(objectivesData);
         }
       } catch (err) {
         console.error('Error cargando datos de Supabase, recurriendo a localStorage:', err);
@@ -316,6 +327,21 @@ export const App: React.FC = () => {
     };
     setActions((prev) => prev.map((a) => (a.id === action.id ? updated : a)));
     actionsService.updateAction(updated).catch(console.error);
+  };
+
+  const handleUpdateObjective = (objective: ObjectiveItem) => {
+    const previous = objectives.find((item) => item.id === objective.id);
+    setObjectives((current) =>
+      current.map((item) => (item.id === objective.id ? objective : item))
+    );
+    actionsService.updateObjective(objective).catch((error) => {
+      console.error('Error al guardar el objetivo:', error);
+      if (previous) {
+        setObjectives((current) =>
+          current.map((item) => (item.id === previous.id ? previous : item))
+        );
+      }
+    });
   };
 
   const handleUpdateColor = (id: string, color: VintageColorKey) => {
@@ -671,11 +697,13 @@ export const App: React.FC = () => {
     actions,
     completedActions,
     clients,
+    objectives,
     currentUser,
     onNavigateEndpoint: handleNavigateEndpoint,
     onLogout: handleLogout,
     onAddAction: handleQuickAdd,
     onUpdateAction: handleUpdateAction,
+    onUpdateObjective: handleUpdateObjective,
     onDeleteAction: handleDelete,
     onCompleteAction: handleToggleComplete,
     onRestoreAction: handleRestoreAction,

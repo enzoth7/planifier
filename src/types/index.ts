@@ -178,7 +178,18 @@ export interface ActionItem {
 
 export type TabFilter = 'all' | 'pending' | 'completed';
 
-export type TabType = 'board' | 'calendar' | 'completed' | 'clients';
+export type TabType = 'board' | 'calendar' | 'objectives' | 'completed' | 'clients';
+
+export interface ObjectiveItem {
+  id: string;
+  month: string; // YYYY-MM
+  label: string;
+  monthlyGoal: string;
+  quarterlyGoal?: string;
+  revenueTarget: number;
+  milestones: SubtaskItem[];
+  updatedAt?: string;
+}
 
 export type ClientType = 'cliente' | 'interesado';
 
@@ -204,4 +215,3 @@ export interface BoardStats {
     title: string;
   } | null;
 }
-

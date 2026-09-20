@@ -1,6 +1,7 @@
 import { supabase } from '../utils/supabase';
-import { ActionItem, ClientItem, ClientType, ClientOwner, TaskType, VintageColorKey } from '../types';
+import { ActionItem, ClientItem, ClientType, ClientOwner, ObjectiveItem, TaskType, VintageColorKey } from '../types';
 import { INITIAL_ACTIONS, INITIAL_CLIENTS } from '../utils/storage';
+import { INITIAL_OBJECTIVES } from '../data/objectives';
 
 // Las tablas persistentes ya existentes conservan este namespace. Renombrarlas
 // requiere una migración de base de datos; no debe hacerse desde el cliente.
@@ -57,13 +58,16 @@ export const actionsService = {
       (localStorage.getItem('planifier_db_seeded') === 'true' ||
        localStorage.getItem('planifier_supabase_seeded_v2') === 'true');
 
-    // Si hay datos en Supabase, registrar que la base ya fue inicializada y retornar filas
-    if (data && data.length > 0) {
+    const actionRows = (data || []).filter((row: any) => row.task_type !== 'objective');
+
+    // Si hay acciones en Supabase, registrar que la base ya fue inicializada y retornar filas.
+    // Los objetivos comparten almacenamiento, pero nunca deben aparecer en el tablero de tareas.
+    if (actionRows.length > 0) {
       if (typeof window !== 'undefined') {
         localStorage.setItem('planifier_db_seeded', 'true');
         localStorage.setItem('planifier_supabase_seeded_v2', 'true');
       }
-      return data.map((row: any) => {
+      return actionRows.map((row: any) => {
         const meta = extractMetaFromNotes(row.notes);
         const resolvedScope =
           (row.workspace_scope as 'personal' | 'polarist') ||
@@ -387,6 +391,92 @@ export const actionsService = {
     const { error } = await supabase.from(COMPLETED_ACTIONS_TABLE).delete().eq('id', id);
     if (error) {
       console.error('Error al eliminar de planifier_completed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Carga los objetivos compartidos del equipo. Se guardan en la tabla de acciones
+   * existente para no introducir una migración destructiva ni separar los datos actuales.
+   */
+  async fetchObjectives(): Promise<ObjectiveItem[]> {
+    const { data, error } = await supabase
+      .from(ACTIONS_TABLE)
+      .select('*')
+      .eq('task_type', 'objective')
+      .order('order_index', { ascending: true });
+
+    if (error) {
+      console.error('Error al cargar objetivos:', error);
+      throw error;
+    }
+
+    let rows = data || [];
+    if (rows.length === 0) {
+      const seedRows = INITIAL_OBJECTIVES.map((objective, index) => ({
+        id: objective.id,
+        order_index: index,
+        title: objective.monthlyGoal,
+        client: objective.month,
+        color: 'emerald',
+        value: objective.revenueTarget,
+        deadline: `${objective.month}-${objective.month.endsWith('-02') ? '28' : ['04', '06', '09', '11'].includes(objective.month.slice(5)) ? '30' : '31'}`,
+        notes: objective.quarterlyGoal || '',
+        subtasks: objective.milestones,
+        created_at: new Date().toISOString(),
+        user_email: 'enzothome1@gmail.com',
+        task_type: 'objective',
+        workspace_scope: 'polarist',
+      }));
+
+      const { data: inserted, error: insertError } = await supabase
+        .from(ACTIONS_TABLE)
+        .insert(seedRows)
+        .select('*')
+        .order('order_index', { ascending: true });
+
+      if (insertError) {
+        console.error('Error al importar objetivos iniciales:', insertError);
+        throw insertError;
+      }
+      rows = inserted || seedRows;
+    }
+
+    return rows.map((row: any) => {
+      const fallback = INITIAL_OBJECTIVES.find((item) => item.id === row.id);
+      const month = row.client || row.deadline?.slice(0, 7) || fallback?.month || '';
+      return {
+        id: row.id,
+        month,
+        label:
+          fallback?.label ||
+          new Intl.DateTimeFormat('es-UY', { month: 'long', timeZone: 'UTC' }).format(
+            new Date(`${month}-01T00:00:00Z`)
+          ),
+        monthlyGoal: row.title || fallback?.monthlyGoal || 'Definir objetivo mensual',
+        quarterlyGoal: row.notes || fallback?.quarterlyGoal || '',
+        revenueTarget: Number(row.value) || 0,
+        milestones: Array.isArray(row.subtasks) ? row.subtasks : [],
+        updatedAt: row.created_at,
+      } as ObjectiveItem;
+    });
+  },
+
+  async updateObjective(objective: ObjectiveItem): Promise<void> {
+    const { error } = await supabase
+      .from(ACTIONS_TABLE)
+      .update({
+        title: objective.monthlyGoal,
+        client: objective.month,
+        value: objective.revenueTarget,
+        notes: objective.quarterlyGoal || '',
+        subtasks: objective.milestones,
+      })
+      .eq('id', objective.id)
+      .eq('task_type', 'objective');
+
+    if (error) {
+      console.error('Error al actualizar objetivo:', error);
       throw error;
     }
   },
