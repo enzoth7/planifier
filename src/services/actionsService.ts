@@ -2,6 +2,12 @@ import { supabase } from '../utils/supabase';
 import { ActionItem, ClientItem, ClientType, ClientOwner, TaskType, VintageColorKey } from '../types';
 import { INITIAL_ACTIONS, INITIAL_CLIENTS } from '../utils/storage';
 
+// Las tablas persistentes ya existentes conservan este namespace. Renombrarlas
+// requiere una migración de base de datos; no debe hacerse desde el cliente.
+const ACTIONS_TABLE = 'plannifier_actions';
+const COMPLETED_ACTIONS_TABLE = 'plannifier_completed';
+const CLIENTS_TABLE = 'plannifier_clients';
+
 /**
  * Utilidades para extraer y serializar metadatos (userEmail, taskType, workspaceScope)
  * en el campo notes si las columnas aún no existen en la base de datos Supabase.
@@ -37,7 +43,7 @@ export const actionsService = {
    */
   async fetchActiveActions(): Promise<ActionItem[]> {
     const { data, error } = await supabase
-      .from('planifier_actions')
+      .from(ACTIONS_TABLE)
       .select('*')
       .order('order_index', { ascending: true });
 
@@ -114,7 +120,7 @@ export const actionsService = {
     }));
 
     const { data: inserted, error: insertError } = await supabase
-      .from('planifier_actions')
+      .from(ACTIONS_TABLE)
       .insert(rowsToInsert)
       .select('*')
       .order('order_index', { ascending: true });
@@ -142,7 +148,7 @@ export const actionsService = {
         task_type: item.taskType || 'action',
         workspace_scope: item.workspaceScope || (item.target?.trim().toLowerCase() === 'polarist' ? 'polarist' : 'personal'),
       }));
-      const { error: seedCompErr } = await supabase.from('planifier_completed').upsert(completedRows);
+      const { error: seedCompErr } = await supabase.from(COMPLETED_ACTIONS_TABLE).upsert(completedRows);
       if (seedCompErr) {
         console.error('Error al sembrar completadas iniciales:', seedCompErr);
       }
@@ -196,7 +202,7 @@ export const actionsService = {
       workspace_scope: item.workspaceScope || 'personal',
     };
 
-    const { error } = await supabase.from('planifier_actions').insert(row);
+    const { error } = await supabase.from(ACTIONS_TABLE).insert(row);
     if (error) {
       console.error('Error al crear acción en Supabase:', error);
       throw error;
@@ -221,7 +227,7 @@ export const actionsService = {
       workspace_scope: item.workspaceScope || 'personal',
     };
 
-    const { error } = await supabase.from('planifier_actions').update(row).eq('id', item.id);
+    const { error } = await supabase.from(ACTIONS_TABLE).update(row).eq('id', item.id);
     if (error) {
       console.error('Error al actualizar acción en Supabase:', error);
       throw error;
@@ -233,7 +239,7 @@ export const actionsService = {
    */
   async reorderActions(items: ActionItem[]): Promise<void> {
     const updates = items.map((item, index) =>
-      supabase.from('planifier_actions').update({ order_index: index }).eq('id', item.id)
+      supabase.from(ACTIONS_TABLE).update({ order_index: index }).eq('id', item.id)
     );
     const results = await Promise.all(updates);
     const hasError = results.find((r) => r.error);
@@ -247,7 +253,7 @@ export const actionsService = {
    * Elimina una acción activa de `planifier_actions`.
    */
   async deleteAction(id: string): Promise<void> {
-    const { error } = await supabase.from('planifier_actions').delete().eq('id', id);
+    const { error } = await supabase.from(ACTIONS_TABLE).delete().eq('id', id);
     if (error) {
       console.error('Error al eliminar acción activa:', error);
       throw error;
@@ -278,13 +284,13 @@ export const actionsService = {
       workspace_scope: item.workspaceScope || 'personal',
     };
 
-    const { error: insertError } = await supabase.from('planifier_completed').upsert(completedRow);
+    const { error: insertError } = await supabase.from(COMPLETED_ACTIONS_TABLE).upsert(completedRow);
     if (insertError) {
       console.error('Error al insertar en planifier_completed:', insertError);
       throw insertError;
     }
 
-    const { error: deleteError } = await supabase.from('planifier_actions').delete().eq('id', item.id);
+    const { error: deleteError } = await supabase.from(ACTIONS_TABLE).delete().eq('id', item.id);
     if (deleteError) {
       console.error('Error al eliminar de planifier_actions:', deleteError);
       throw deleteError;
@@ -296,7 +302,7 @@ export const actionsService = {
    */
   async fetchCompletedActions(): Promise<ActionItem[]> {
     const { data, error } = await supabase
-      .from('planifier_completed')
+      .from(COMPLETED_ACTIONS_TABLE)
       .select('*')
       .order('completed_at', { ascending: false });
 
@@ -361,13 +367,13 @@ export const actionsService = {
       workspace_scope: item.workspaceScope || 'personal',
     };
 
-    const { error: insertError } = await supabase.from('planifier_actions').upsert(activeRow);
+    const { error: insertError } = await supabase.from(ACTIONS_TABLE).upsert(activeRow);
     if (insertError) {
       console.error('Error al restaurar a planifier_actions:', insertError);
       throw insertError;
     }
 
-    const { error: deleteError } = await supabase.from('planifier_completed').delete().eq('id', item.id);
+    const { error: deleteError } = await supabase.from(COMPLETED_ACTIONS_TABLE).delete().eq('id', item.id);
     if (deleteError) {
       console.error('Error al remover de planifier_completed:', deleteError);
       throw deleteError;
@@ -378,7 +384,7 @@ export const actionsService = {
    * Elimina permanentemente una acción del historial de completados.
    */
   async deleteCompletedAction(id: string): Promise<void> {
-    const { error } = await supabase.from('planifier_completed').delete().eq('id', id);
+    const { error } = await supabase.from(COMPLETED_ACTIONS_TABLE).delete().eq('id', id);
     if (error) {
       console.error('Error al eliminar de planifier_completed:', error);
       throw error;
@@ -391,7 +397,7 @@ export const actionsService = {
    */
   async fetchClients(): Promise<ClientItem[]> {
     const { data, error } = await supabase
-      .from('planifier_clients')
+      .from(CLIENTS_TABLE)
       .select('*')
       .order('created_at', { ascending: true });
 
@@ -452,7 +458,7 @@ export const actionsService = {
         country: c.country || 'Uruguay',
         created_at: c.createdAt || new Date().toISOString(),
       }));
-      await supabase.from('planifier_clients').insert(rowsToInsert);
+      await supabase.from(CLIENTS_TABLE).insert(rowsToInsert);
       clientList = rowsToInsert.map((c) => ({
         id: c.id,
         name: c.name,
@@ -498,7 +504,7 @@ export const actionsService = {
       country: client.country || 'Uruguay',
       created_at: client.createdAt || new Date().toISOString(),
     };
-    const { error } = await supabase.from('planifier_clients').insert(row);
+    const { error } = await supabase.from(CLIENTS_TABLE).insert(row);
     if (error) {
       console.error('Error al crear cliente en Supabase:', error);
       throw error;
@@ -517,7 +523,7 @@ export const actionsService = {
       color: client.color,
       country: client.country,
     };
-    const { error } = await supabase.from('planifier_clients').update(row).eq('id', client.id);
+    const { error } = await supabase.from(CLIENTS_TABLE).update(row).eq('id', client.id);
     if (error) {
       console.error('Error al actualizar cliente en Supabase:', error);
       throw error;
@@ -528,11 +534,10 @@ export const actionsService = {
    * Elimina un cliente de `planifier_clients`.
    */
   async deleteClient(id: string): Promise<void> {
-    const { error } = await supabase.from('planifier_clients').delete().eq('id', id);
+    const { error } = await supabase.from(CLIENTS_TABLE).delete().eq('id', id);
     if (error) {
       console.error('Error al eliminar cliente de Supabase:', error);
       throw error;
     }
   },
 };
-

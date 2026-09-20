@@ -9,7 +9,7 @@ class SoundController {
 
   constructor() {
     // Read persisted mute setting
-    const saved = localStorage.getItem('planifier_sound_muted');
+    const saved = localStorage.getItem('planifier_sound_muted') || localStorage.getItem('plannifier_sound_muted');
     this.isMuted = saved === 'true';
   }
 

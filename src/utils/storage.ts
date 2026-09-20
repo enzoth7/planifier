@@ -2,6 +2,8 @@ import { ActionItem, ClientItem } from '../types';
 
 const STORAGE_KEY = 'planifier_board_items_v1';
 const CLIENTS_STORAGE_KEY = 'planifier_clients_v1';
+const LEGACY_STORAGE_KEY = 'plannifier_board_items_v1';
+const LEGACY_CLIENTS_STORAGE_KEY = 'plannifier_clients_v1';
 
 export const INITIAL_CLIENTS: ClientItem[] = [
   { id: 'client-polarist', name: 'Polarist', type: 'cliente', color: 'emerald', country: 'Uruguay' },
@@ -142,15 +144,25 @@ export const INITIAL_ACTIONS: ActionItem[] = [
 export function loadStoredActions(): ActionItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw !== null) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed;
+    const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const legacyParsed = legacyRaw ? JSON.parse(legacyRaw) : [];
+
+    if (Array.isArray(parsed) || Array.isArray(legacyParsed)) {
+      const merged = new Map<string, ActionItem>();
+      if (Array.isArray(legacyParsed)) legacyParsed.forEach((item) => merged.set(item.id, item));
+      if (Array.isArray(parsed)) parsed.forEach((item) => merged.set(item.id, item));
+      const actions = [...merged.values()];
+      if (actions.length > 0) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(actions));
+        return actions;
       }
     }
     const isSeeded =
       localStorage.getItem('planifier_db_seeded') === 'true' ||
-      localStorage.getItem('planifier_supabase_seeded_v2') === 'true';
+      localStorage.getItem('planifier_supabase_seeded_v2') === 'true' ||
+      localStorage.getItem('plannifier_db_seeded') === 'true' ||
+      localStorage.getItem('plannifier_supabase_seeded_v2') === 'true';
 
     if (isSeeded) {
       return [];
@@ -231,15 +243,25 @@ export function importBoardFromJSON(
 export function loadStoredClients(): ClientItem[] {
   try {
     const raw = localStorage.getItem(CLIENTS_STORAGE_KEY);
-    if (raw !== null) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed;
+    const legacyRaw = localStorage.getItem(LEGACY_CLIENTS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const legacyParsed = legacyRaw ? JSON.parse(legacyRaw) : [];
+
+    if (Array.isArray(parsed) || Array.isArray(legacyParsed)) {
+      const merged = new Map<string, ClientItem>();
+      if (Array.isArray(legacyParsed)) legacyParsed.forEach((item) => merged.set(item.id, item));
+      if (Array.isArray(parsed)) parsed.forEach((item) => merged.set(item.id, item));
+      const clients = [...merged.values()];
+      if (clients.length > 0) {
+        localStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(clients));
+        return clients;
       }
     }
     const isSeeded =
       localStorage.getItem('planifier_db_seeded') === 'true' ||
-      localStorage.getItem('planifier_supabase_seeded_v2') === 'true';
+      localStorage.getItem('planifier_supabase_seeded_v2') === 'true' ||
+      localStorage.getItem('plannifier_db_seeded') === 'true' ||
+      localStorage.getItem('plannifier_supabase_seeded_v2') === 'true';
 
     if (isSeeded) {
       return [];

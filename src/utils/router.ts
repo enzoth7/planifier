@@ -47,8 +47,9 @@ export const getInitialEndpoint = (): AppEndpoint => {
   }
 
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('planifier_current_endpoint') as AppEndpoint | null;
+    const saved = (localStorage.getItem('planifier_current_endpoint') || localStorage.getItem('plannifier_current_endpoint')) as AppEndpoint | null;
     if (saved && VALID_ENDPOINTS.includes(saved)) {
+      localStorage.setItem('planifier_current_endpoint', saved);
       return saved;
     }
   }
@@ -80,7 +81,7 @@ export const subscribeToEndpointChange = (callback: (endpoint: AppEndpoint) => v
 
   const handler = () => {
     const fromUrl = getEndpointFromUrl();
-    const saved = localStorage.getItem('planifier_current_endpoint') as AppEndpoint | null;
+    const saved = (localStorage.getItem('planifier_current_endpoint') || localStorage.getItem('plannifier_current_endpoint')) as AppEndpoint | null;
     const ep = fromUrl || saved || 'enzo';
     const validEp = VALID_ENDPOINTS.includes(ep) ? ep : 'enzo';
     document.title = ENDPOINT_TITLES[validEp];

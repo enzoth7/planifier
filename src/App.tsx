@@ -40,7 +40,8 @@ export const App: React.FC = () => {
 
   // Estado de sesión autenticada
   const [authenticatedUser, setAuthenticatedUser] = useState<UserProfile | null>(() => {
-    const email = localStorage.getItem('planifier_auth_email');
+    const email = localStorage.getItem('planifier_auth_email') || localStorage.getItem('plannifier_auth_email');
+    if (email) localStorage.setItem('planifier_auth_email', email);
     return APP_USERS.find((u) => u.email === email) || null;
   });
 

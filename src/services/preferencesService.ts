@@ -10,6 +10,7 @@ export interface UserPreferences {
 
 const DEFAULT_BG = '/Bg.png';
 const DEFAULT_OPACITY = 30;
+const PREFERENCES_TABLE = 'plannifier_user_preferences';
 
 /**
  * Obtiene las preferencias almacenadas en localStorage de forma síncrona
@@ -37,9 +38,16 @@ export function getStoredPreferences(userEmail: string): UserPreferences {
       };
     }
 
+    const legacyRaw = localStorage.getItem(`plannifier_pref_${userEmail}`);
+    if (legacyRaw) {
+      const migrated = { ...defaults, ...JSON.parse(legacyRaw), userEmail };
+      localStorage.setItem(`planifier_pref_${userEmail}`, JSON.stringify(migrated));
+      return migrated;
+    }
+
     // Fallback inteligente para migración de claves previas por email
-    const legacyBg = localStorage.getItem(`planifier_bg_image_${userEmail}`);
-    const legacyOpacity = localStorage.getItem(`planifier_bg_opacity_${userEmail}`);
+    const legacyBg = localStorage.getItem(`plannifier_bg_image_${userEmail}`);
+    const legacyOpacity = localStorage.getItem(`plannifier_bg_opacity_${userEmail}`);
     if (legacyBg || legacyOpacity) {
       const migrated: UserPreferences = {
         ...defaults,
@@ -73,7 +81,7 @@ export const preferencesService = {
 
     try {
       const { data, error } = await supabase
-        .from('planifier_user_preferences')
+        .from(PREFERENCES_TABLE)
         .select('*')
         .eq('user_email', userEmail)
         .maybeSingle();
@@ -138,7 +146,7 @@ export const preferencesService = {
 
     // 2. Persistencia en Supabase
     try {
-      const { error } = await supabase.from('planifier_user_preferences').upsert(
+      const { error } = await supabase.from(PREFERENCES_TABLE).upsert(
         {
           user_email: userEmail,
           bg_image: merged.bgImage,
