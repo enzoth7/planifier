@@ -3,10 +3,10 @@ import { AppEndpoint } from '../types';
 export const VALID_ENDPOINTS: AppEndpoint[] = ['enzo', 'cristian', 'julieta', 'polarist'];
 
 export const ENDPOINT_TITLES: Record<AppEndpoint, string> = {
-  enzo: 'Plannifier | Vista personal Enzo',
-  cristian: 'Plannifier | Vista personal Cristian',
-  julieta: 'Plannifier | Vista personal Julieta',
-  polarist: 'Plannifier | Vista Polarist',
+  enzo: 'Planifier | Vista personal Enzo',
+  cristian: 'Planifier | Vista personal Cristian',
+  julieta: 'Planifier | Vista personal Julieta',
+  polarist: 'Planifier | Vista Polarist',
 };
 
 /**
@@ -34,20 +34,20 @@ export const getEndpointFromUrl = (): AppEndpoint | null => {
 /**
  * Determina el endpoint inicial:
  * 1. Desde URL (pathname o hash)
- * 2. Desde localStorage ('plannifier_current_endpoint')
+ * 2. Desde localStorage ('planifier_current_endpoint')
  * 3. Por defecto 'enzo'
  */
 export const getInitialEndpoint = (): AppEndpoint => {
   const fromUrl = getEndpointFromUrl();
   if (fromUrl) {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('plannifier_current_endpoint', fromUrl);
+      localStorage.setItem('planifier_current_endpoint', fromUrl);
     }
     return fromUrl;
   }
 
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('plannifier_current_endpoint') as AppEndpoint | null;
+    const saved = localStorage.getItem('planifier_current_endpoint') as AppEndpoint | null;
     if (saved && VALID_ENDPOINTS.includes(saved)) {
       return saved;
     }
@@ -64,7 +64,7 @@ export const navigateEndpoint = (endpoint: AppEndpoint): void => {
   if (typeof window === 'undefined') return;
 
   if (VALID_ENDPOINTS.includes(endpoint)) {
-    localStorage.setItem('plannifier_current_endpoint', endpoint);
+    localStorage.setItem('planifier_current_endpoint', endpoint);
     window.history.pushState(null, '', '/' + endpoint);
     document.title = ENDPOINT_TITLES[endpoint];
     window.dispatchEvent(new Event('endpointchange'));
@@ -80,7 +80,7 @@ export const subscribeToEndpointChange = (callback: (endpoint: AppEndpoint) => v
 
   const handler = () => {
     const fromUrl = getEndpointFromUrl();
-    const saved = localStorage.getItem('plannifier_current_endpoint') as AppEndpoint | null;
+    const saved = localStorage.getItem('planifier_current_endpoint') as AppEndpoint | null;
     const ep = fromUrl || saved || 'enzo';
     const validEp = VALID_ENDPOINTS.includes(ep) ? ep : 'enzo';
     document.title = ENDPOINT_TITLES[validEp];

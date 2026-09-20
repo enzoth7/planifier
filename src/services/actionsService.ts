@@ -30,29 +30,14 @@ function extractMetaFromNotes(rawNotes?: string): {
   return { cleanNotes: rawNotes };
 }
 
-function injectMetaIntoNotes(
-  notes: string | undefined,
-  userEmail?: string,
-  taskType?: TaskType,
-  workspaceScope?: 'personal' | 'polarist'
-): string {
-  const { cleanNotes } = extractMetaFromNotes(notes);
-  const metaObj = {
-    userEmail: userEmail || 'enzothome1@gmail.com',
-    taskType: taskType || 'action',
-    workspaceScope: workspaceScope || 'personal',
-  };
-  return `<!--META:${JSON.stringify(metaObj)}-->\n${cleanNotes}`;
-}
-
 export const actionsService = {
   /**
-   * Carga las acciones activas desde `plannifier_actions` ordenadas por `order_index ASC`.
+   * Carga las acciones activas desde `planifier_actions` ordenadas por `order_index ASC`.
    * Si la tabla está vacía en el primer arranque, siembra las acciones iniciales.
    */
   async fetchActiveActions(): Promise<ActionItem[]> {
     const { data, error } = await supabase
-      .from('plannifier_actions')
+      .from('planifier_actions')
       .select('*')
       .order('order_index', { ascending: true });
 
@@ -63,14 +48,14 @@ export const actionsService = {
 
     const isDbSeeded =
       typeof window !== 'undefined' &&
-      (localStorage.getItem('plannifier_db_seeded') === 'true' ||
-       localStorage.getItem('plannifier_supabase_seeded_v2') === 'true');
+      (localStorage.getItem('planifier_db_seeded') === 'true' ||
+       localStorage.getItem('planifier_supabase_seeded_v2') === 'true');
 
     // Si hay datos en Supabase, registrar que la base ya fue inicializada y retornar filas
     if (data && data.length > 0) {
       if (typeof window !== 'undefined') {
-        localStorage.setItem('plannifier_db_seeded', 'true');
-        localStorage.setItem('plannifier_supabase_seeded_v2', 'true');
+        localStorage.setItem('planifier_db_seeded', 'true');
+        localStorage.setItem('planifier_supabase_seeded_v2', 'true');
       }
       return data.map((row: any) => {
         const meta = extractMetaFromNotes(row.notes);
@@ -107,8 +92,8 @@ export const actionsService = {
 
     // Solo sembrar en el primer arranque absoluto si nunca fue sembrada
     if (typeof window !== 'undefined') {
-      localStorage.setItem('plannifier_db_seeded', 'true');
-      localStorage.setItem('plannifier_supabase_seeded_v2', 'true');
+      localStorage.setItem('planifier_db_seeded', 'true');
+      localStorage.setItem('planifier_supabase_seeded_v2', 'true');
     }
 
     const activeSeeds = INITIAL_ACTIONS.filter((a) => !a.completed);
@@ -120,44 +105,26 @@ export const actionsService = {
       color: item.tagColor,
       value: item.value,
       deadline: item.deadline,
-      notes: injectMetaIntoNotes(item.notes, item.userEmail, item.taskType, item.workspaceScope),
+      notes: item.notes || '',
       subtasks: item.subtasks || [],
       created_at: item.createdAt || new Date().toISOString(),
       user_email: item.userEmail || 'enzothome1@gmail.com',
       task_type: item.taskType || 'action',
+      workspace_scope: item.workspaceScope || (item.target?.trim().toLowerCase() === 'polarist' ? 'polarist' : 'personal'),
     }));
 
-    let insertedData: any[] | null = null;
     const { data: inserted, error: insertError } = await supabase
-      .from('plannifier_actions')
+      .from('planifier_actions')
       .insert(rowsToInsert)
       .select('*')
       .order('order_index', { ascending: true });
 
     if (insertError) {
-      console.warn('Fallo siembra con columnas user_email/task_type, reintentando con fallback:', insertError.message);
-      const fallbackRows = rowsToInsert.map((r, idx) => {
-        const seed = activeSeeds[idx];
-        return {
-          id: r.id,
-          order_index: r.order_index,
-          title: r.title,
-          client: r.client,
-          color: r.color,
-          value: r.value,
-          deadline: r.deadline,
-          notes: injectMetaIntoNotes(seed.notes, seed.userEmail, seed.taskType, seed.workspaceScope),
-          subtasks: r.subtasks,
-          created_at: r.created_at,
-        };
-      });
-      const { data: fbData } = await supabase.from('plannifier_actions').insert(fallbackRows).select('*');
-      insertedData = fbData || fallbackRows;
-    } else {
-      insertedData = inserted;
+      console.error('Error al sembrar acciones activas:', insertError);
+      throw insertError;
     }
 
-    // También sembrar acción completada inicial en plannifier_completed si la tabla está vacía
+    // También sembrar acción completada inicial en planifier_completed si la tabla está vacía
     const completedSeeds = INITIAL_ACTIONS.filter((a) => a.completed);
     if (completedSeeds.length > 0) {
       const completedRows = completedSeeds.map((item) => ({
@@ -167,32 +134,21 @@ export const actionsService = {
         color: item.tagColor,
         value: item.value,
         deadline: item.deadline,
-        notes: injectMetaIntoNotes(item.notes, item.userEmail, item.taskType, item.workspaceScope),
+        notes: item.notes || '',
         subtasks: item.subtasks || [],
         completed_at: item.completedAt || new Date().toISOString(),
         created_at: item.createdAt || new Date().toISOString(),
         user_email: item.userEmail || 'enzothome1@gmail.com',
         task_type: item.taskType || 'action',
+        workspace_scope: item.workspaceScope || (item.target?.trim().toLowerCase() === 'polarist' ? 'polarist' : 'personal'),
       }));
-      const { error: seedCompErr } = await supabase.from('plannifier_completed').upsert(completedRows);
+      const { error: seedCompErr } = await supabase.from('planifier_completed').upsert(completedRows);
       if (seedCompErr) {
-        const fallbackCompRows = completedSeeds.map((item) => ({
-          id: item.id,
-          title: item.title,
-          client: item.target,
-          color: item.tagColor,
-          value: item.value,
-          deadline: item.deadline,
-          notes: injectMetaIntoNotes(item.notes, item.userEmail, item.taskType, item.workspaceScope),
-          subtasks: item.subtasks || [],
-          completed_at: item.completedAt || new Date().toISOString(),
-          created_at: item.createdAt || new Date().toISOString(),
-        }));
-        await supabase.from('plannifier_completed').upsert(fallbackCompRows);
+        console.error('Error al sembrar completadas iniciales:', seedCompErr);
       }
     }
 
-    return (insertedData || rowsToInsert).map((row: any) => {
+    return (inserted || rowsToInsert).map((row: any) => {
       const meta = extractMetaFromNotes(row.notes);
       const resolvedScope =
         (row.workspace_scope as 'personal' | 'polarist') ||
@@ -221,9 +177,7 @@ export const actionsService = {
   },
 
   /**
-   * Inserta una nueva acción en `plannifier_actions`.
-   * Fallback resiliente: Si Supabase retorna error (ej. columna no existe aún), reintenta sin esas columnas
-   * y preserva la información en `notes` serializado.
+   * Inserta una nueva acción en `planifier_actions`.
    */
   async createAction(item: ActionItem): Promise<void> {
     const row = {
@@ -234,39 +188,23 @@ export const actionsService = {
       color: item.tagColor,
       value: item.value,
       deadline: item.deadline,
-      notes: injectMetaIntoNotes(item.notes, item.userEmail, item.taskType, item.workspaceScope),
+      notes: item.notes || '',
       subtasks: item.subtasks || [],
       created_at: item.createdAt || new Date().toISOString(),
       user_email: item.userEmail || 'enzothome1@gmail.com',
       task_type: item.taskType || 'action',
+      workspace_scope: item.workspaceScope || 'personal',
     };
 
-    const { error } = await supabase.from('plannifier_actions').insert(row);
+    const { error } = await supabase.from('planifier_actions').insert(row);
     if (error) {
-      console.warn('Supabase insert con columnas user_email/task_type falló, reintentando con fallback en notes:', error.message);
-      const fallbackRow = {
-        id: item.id,
-        order_index: item.order,
-        title: item.title,
-        client: item.target,
-        color: item.tagColor,
-        value: item.value,
-        deadline: item.deadline,
-        notes: injectMetaIntoNotes(item.notes, item.userEmail, item.taskType, item.workspaceScope),
-        subtasks: item.subtasks || [],
-        created_at: item.createdAt || new Date().toISOString(),
-      };
-      const { error: fallbackError } = await supabase.from('plannifier_actions').insert(fallbackRow);
-      if (fallbackError) {
-        console.error('Error definitivo al crear acción en Supabase:', fallbackError);
-        throw fallbackError;
-      }
+      console.error('Error al crear acción en Supabase:', error);
+      throw error;
     }
   },
 
   /**
-   * Actualiza los datos de una acción activa en `plannifier_actions`.
-   * Fallback resiliente si columnas user_email o task_type no existen en Supabase.
+   * Actualiza los datos de una acción activa en `planifier_actions`.
    */
   async updateAction(item: ActionItem): Promise<void> {
     const row = {
@@ -275,31 +213,18 @@ export const actionsService = {
       color: item.tagColor,
       value: item.value,
       deadline: item.deadline,
-      notes: injectMetaIntoNotes(item.notes, item.userEmail, item.taskType, item.workspaceScope),
+      notes: item.notes || '',
       subtasks: item.subtasks || [],
       order_index: item.order,
       user_email: item.userEmail || 'enzothome1@gmail.com',
       task_type: item.taskType || 'action',
+      workspace_scope: item.workspaceScope || 'personal',
     };
 
-    const { error } = await supabase.from('plannifier_actions').update(row).eq('id', item.id);
+    const { error } = await supabase.from('planifier_actions').update(row).eq('id', item.id);
     if (error) {
-      console.warn('Supabase update con columnas user_email/task_type falló, reintentando con fallback en notes:', error.message);
-      const fallbackRow = {
-        title: item.title,
-        client: item.target,
-        color: item.tagColor,
-        value: item.value,
-        deadline: item.deadline,
-        notes: injectMetaIntoNotes(item.notes, item.userEmail, item.taskType, item.workspaceScope),
-        subtasks: item.subtasks || [],
-        order_index: item.order,
-      };
-      const { error: fallbackError } = await supabase.from('plannifier_actions').update(fallbackRow).eq('id', item.id);
-      if (fallbackError) {
-        console.error('Error al actualizar acción en Supabase:', fallbackError);
-        throw fallbackError;
-      }
+      console.error('Error al actualizar acción en Supabase:', error);
+      throw error;
     }
   },
 
@@ -308,7 +233,7 @@ export const actionsService = {
    */
   async reorderActions(items: ActionItem[]): Promise<void> {
     const updates = items.map((item, index) =>
-      supabase.from('plannifier_actions').update({ order_index: index }).eq('id', item.id)
+      supabase.from('planifier_actions').update({ order_index: index }).eq('id', item.id)
     );
     const results = await Promise.all(updates);
     const hasError = results.find((r) => r.error);
@@ -319,10 +244,10 @@ export const actionsService = {
   },
 
   /**
-   * Elimina una acción activa de `plannifier_actions`.
+   * Elimina una acción activa de `planifier_actions`.
    */
   async deleteAction(id: string): Promise<void> {
-    const { error } = await supabase.from('plannifier_actions').delete().eq('id', id);
+    const { error } = await supabase.from('planifier_actions').delete().eq('id', id);
     if (error) {
       console.error('Error al eliminar acción activa:', error);
       throw error;
@@ -331,8 +256,8 @@ export const actionsService = {
 
   /**
    * Completa una acción:
-   * - Se inserta en `plannifier_completed` con `completed_at`.
-   * - Se elimina de `plannifier_actions` para desaparecer de la vista principal.
+   * - Se inserta en `planifier_completed` con `completed_at`.
+   * - Se elimina de `planifier_actions` para desaparecer de la vista principal.
    * Fallback resiliente si columnas no existen.
    */
   async completeAction(item: ActionItem): Promise<void> {
@@ -344,49 +269,34 @@ export const actionsService = {
       color: item.tagColor,
       value: item.value,
       deadline: item.deadline,
-      notes: injectMetaIntoNotes(item.notes, item.userEmail, item.taskType, item.workspaceScope),
+      notes: item.notes || '',
       subtasks: item.subtasks || [],
       completed_at: completedAt,
       created_at: item.createdAt || completedAt,
       user_email: item.userEmail || 'enzothome1@gmail.com',
       task_type: item.taskType || 'action',
+      workspace_scope: item.workspaceScope || 'personal',
     };
 
-    const { error: insertError } = await supabase.from('plannifier_completed').upsert(completedRow);
+    const { error: insertError } = await supabase.from('planifier_completed').upsert(completedRow);
     if (insertError) {
-      console.warn('Supabase completeAction upsert falló con columnas extendidas, reintentando fallback:', insertError.message);
-      const fallbackRow = {
-        id: item.id,
-        title: item.title,
-        client: item.target,
-        color: item.tagColor,
-        value: item.value,
-        deadline: item.deadline,
-        notes: injectMetaIntoNotes(item.notes, item.userEmail, item.taskType, item.workspaceScope),
-        subtasks: item.subtasks || [],
-        completed_at: completedAt,
-        created_at: item.createdAt || completedAt,
-      };
-      const { error: fallbackError } = await supabase.from('plannifier_completed').upsert(fallbackRow);
-      if (fallbackError) {
-        console.error('Error al insertar en plannifier_completed:', fallbackError);
-        throw fallbackError;
-      }
+      console.error('Error al insertar en planifier_completed:', insertError);
+      throw insertError;
     }
 
-    const { error: deleteError } = await supabase.from('plannifier_actions').delete().eq('id', item.id);
+    const { error: deleteError } = await supabase.from('planifier_actions').delete().eq('id', item.id);
     if (deleteError) {
-      console.error('Error al eliminar de plannifier_actions:', deleteError);
+      console.error('Error al eliminar de planifier_actions:', deleteError);
       throw deleteError;
     }
   },
 
   /**
-   * Carga las acciones completadas desde `plannifier_completed` ordenadas por `completed_at DESC`.
+   * Carga las acciones completadas desde `planifier_completed` ordenadas por `completed_at DESC`.
    */
   async fetchCompletedActions(): Promise<ActionItem[]> {
     const { data, error } = await supabase
-      .from('plannifier_completed')
+      .from('planifier_completed')
       .select('*')
       .order('completed_at', { ascending: false });
 
@@ -396,8 +306,8 @@ export const actionsService = {
     }
 
     if (data && data.length > 0 && typeof window !== 'undefined') {
-      localStorage.setItem('plannifier_db_seeded', 'true');
-      localStorage.setItem('plannifier_supabase_seeded_v2', 'true');
+      localStorage.setItem('planifier_db_seeded', 'true');
+      localStorage.setItem('planifier_supabase_seeded_v2', 'true');
     }
 
     return (data || []).map((row: any) => {
@@ -431,9 +341,8 @@ export const actionsService = {
 
   /**
    * Restaura una acción completada de regreso al tablero activo:
-   * - Se inserta en `plannifier_actions` con `order_index`.
-   * - Se elimina de `plannifier_completed`.
-   * Fallback resiliente si columnas no existen.
+   * - Se inserta en `planifier_actions` con `order_index`.
+   * - Se elimina de `planifier_completed`.
    */
   async restoreAction(item: ActionItem, newOrderIndex = 0): Promise<void> {
     const activeRow = {
@@ -444,38 +353,23 @@ export const actionsService = {
       color: item.tagColor,
       value: item.value,
       deadline: item.deadline,
-      notes: injectMetaIntoNotes(item.notes, item.userEmail, item.taskType, item.workspaceScope),
+      notes: item.notes || '',
       subtasks: item.subtasks || [],
       created_at: item.createdAt || new Date().toISOString(),
       user_email: item.userEmail || 'enzothome1@gmail.com',
       task_type: item.taskType || 'action',
+      workspace_scope: item.workspaceScope || 'personal',
     };
 
-    const { error: insertError } = await supabase.from('plannifier_actions').upsert(activeRow);
+    const { error: insertError } = await supabase.from('planifier_actions').upsert(activeRow);
     if (insertError) {
-      console.warn('Supabase restoreAction upsert falló con columnas extendidas, reintentando fallback:', insertError.message);
-      const fallbackRow = {
-        id: item.id,
-        order_index: newOrderIndex,
-        title: item.title,
-        client: item.target,
-        color: item.tagColor,
-        value: item.value,
-        deadline: item.deadline,
-        notes: injectMetaIntoNotes(item.notes, item.userEmail, item.taskType, item.workspaceScope),
-        subtasks: item.subtasks || [],
-        created_at: item.createdAt || new Date().toISOString(),
-      };
-      const { error: fallbackError } = await supabase.from('plannifier_actions').upsert(fallbackRow);
-      if (fallbackError) {
-        console.error('Error al restaurar a plannifier_actions:', fallbackError);
-        throw fallbackError;
-      }
+      console.error('Error al restaurar a planifier_actions:', insertError);
+      throw insertError;
     }
 
-    const { error: deleteError } = await supabase.from('plannifier_completed').delete().eq('id', item.id);
+    const { error: deleteError } = await supabase.from('planifier_completed').delete().eq('id', item.id);
     if (deleteError) {
-      console.error('Error al remover de plannifier_completed:', deleteError);
+      console.error('Error al remover de planifier_completed:', deleteError);
       throw deleteError;
     }
   },
@@ -484,20 +378,20 @@ export const actionsService = {
    * Elimina permanentemente una acción del historial de completados.
    */
   async deleteCompletedAction(id: string): Promise<void> {
-    const { error } = await supabase.from('plannifier_completed').delete().eq('id', id);
+    const { error } = await supabase.from('planifier_completed').delete().eq('id', id);
     if (error) {
-      console.error('Error al eliminar de plannifier_completed:', error);
+      console.error('Error al eliminar de planifier_completed:', error);
       throw error;
     }
   },
 
   /**
-   * Carga la lista de clientes/interesados desde `plannifier_clients`.
+   * Carga la lista de clientes/interesados desde `planifier_clients`.
    * Asegura que el cliente "Polarist" siempre esté en la lista disponible.
    */
   async fetchClients(): Promise<ClientItem[]> {
     const { data, error } = await supabase
-      .from('plannifier_clients')
+      .from('planifier_clients')
       .select('*')
       .order('created_at', { ascending: true });
 
@@ -508,29 +402,29 @@ export const actionsService = {
 
     const isDbSeeded =
       typeof window !== 'undefined' &&
-      (localStorage.getItem('plannifier_db_seeded') === 'true' ||
-       localStorage.getItem('plannifier_supabase_seeded_v2') === 'true');
+      (localStorage.getItem('planifier_db_seeded') === 'true' ||
+       localStorage.getItem('planifier_supabase_seeded_v2') === 'true');
 
     let clientList: ClientItem[] = [];
 
     if (data && data.length > 0) {
       if (typeof window !== 'undefined') {
-        localStorage.setItem('plannifier_db_seeded', 'true');
-        localStorage.setItem('plannifier_supabase_seeded_v2', 'true');
+        localStorage.setItem('planifier_db_seeded', 'true');
+        localStorage.setItem('planifier_supabase_seeded_v2', 'true');
       }
       clientList = data.map((row: any) => {
         const rawType = (row.type as string) || 'cliente';
         let clientType: ClientType = 'cliente';
-        let owner: ClientOwner = 'enzo';
+        let owner: ClientOwner = (row.owner as ClientOwner) || (row.name?.trim().toLowerCase() === 'polarist' ? 'polarist' : 'enzo');
 
         if (rawType.includes('::')) {
           const [t, o] = rawType.split('::');
           clientType = (t as ClientType) || 'cliente';
-          owner = (o as ClientOwner) || 'enzo';
+          if (!row.owner) {
+            owner = (o as ClientOwner) || owner;
+          }
         } else {
           clientType = (rawType as ClientType) || 'cliente';
-          // Clientes existentes sin etiqueta pertenecen a Enzo
-          owner = 'enzo';
         }
 
         return {
@@ -545,28 +439,39 @@ export const actionsService = {
       });
     } else if (!isDbSeeded) {
       if (typeof window !== 'undefined') {
-        localStorage.setItem('plannifier_db_seeded', 'true');
-        localStorage.setItem('plannifier_supabase_seeded_v2', 'true');
+        localStorage.setItem('planifier_db_seeded', 'true');
+        localStorage.setItem('planifier_supabase_seeded_v2', 'true');
       }
 
       const rowsToInsert = INITIAL_CLIENTS.map((c) => ({
         id: c.id,
         name: c.name,
-        type: `${c.type || 'cliente'}::enzo`,
+        type: c.type || 'cliente',
+        owner: c.owner || (c.name.trim().toLowerCase() === 'polarist' ? 'polarist' : 'enzo'),
         color: c.color,
         country: c.country || 'Uruguay',
         created_at: c.createdAt || new Date().toISOString(),
       }));
-      await supabase.from('plannifier_clients').insert(rowsToInsert);
-      clientList = INITIAL_CLIENTS.map((c) => ({ ...c, owner: 'enzo' as ClientOwner }));
+      await supabase.from('planifier_clients').insert(rowsToInsert);
+      clientList = rowsToInsert.map((c) => ({
+        id: c.id,
+        name: c.name,
+        type: c.type as ClientType,
+        owner: c.owner as ClientOwner,
+        color: c.color as VintageColorKey,
+        country: c.country,
+        createdAt: c.created_at,
+      }));
     }
 
-    // Asegurar que Polarist tenga al menos un cliente propio para empezar en su espacio
-    const hasPolaristClient = clientList.some((c) => c.owner === 'polarist');
-    if (!hasPolaristClient) {
+    // No inyectar cliente mock client-polarist-enterprise si ya existe cliente con owner 'polarist'
+    const hasPolaristClient = clientList.some(
+      (c) => c.owner === 'polarist' || c.name.trim().toLowerCase() === 'polarist'
+    );
+    if (!hasPolaristClient && clientList.length === 0) {
       const defaultPolaristClient: ClientItem = {
-        id: 'client-polarist-enterprise',
-        name: 'Polarist Enterprise',
+        id: 'client-1',
+        name: 'Polarist',
         type: 'cliente',
         owner: 'polarist',
         color: 'emerald',
@@ -580,20 +485,20 @@ export const actionsService = {
   },
 
   /**
-   * Inserta un nuevo cliente/interesado en `plannifier_clients`.
-   * Serializa el owner en type como `${type}::${owner}` para aislar entre usuarios y Polarist.
+   * Inserta un nuevo cliente/interesado en `planifier_clients`.
    */
   async createClient(client: ClientItem): Promise<void> {
     const ownerToSave = client.owner || 'enzo';
     const row = {
       id: client.id,
       name: client.name,
-      type: `${client.type || 'cliente'}::${ownerToSave}`,
+      type: client.type || 'cliente',
+      owner: ownerToSave,
       color: client.color,
       country: client.country || 'Uruguay',
       created_at: client.createdAt || new Date().toISOString(),
     };
-    const { error } = await supabase.from('plannifier_clients').insert(row);
+    const { error } = await supabase.from('planifier_clients').insert(row);
     if (error) {
       console.error('Error al crear cliente en Supabase:', error);
       throw error;
@@ -601,17 +506,18 @@ export const actionsService = {
   },
 
   /**
-   * Actualiza los datos de un cliente/interesado en `plannifier_clients`.
+   * Actualiza los datos de un cliente/interesado en `planifier_clients`.
    */
   async updateClient(client: ClientItem): Promise<void> {
     const ownerToSave = client.owner || 'enzo';
     const row = {
       name: client.name,
-      type: `${client.type || 'cliente'}::${ownerToSave}`,
+      type: client.type || 'cliente',
+      owner: ownerToSave,
       color: client.color,
       country: client.country,
     };
-    const { error } = await supabase.from('plannifier_clients').update(row).eq('id', client.id);
+    const { error } = await supabase.from('planifier_clients').update(row).eq('id', client.id);
     if (error) {
       console.error('Error al actualizar cliente en Supabase:', error);
       throw error;
@@ -619,10 +525,10 @@ export const actionsService = {
   },
 
   /**
-   * Elimina un cliente de `plannifier_clients`.
+   * Elimina un cliente de `planifier_clients`.
    */
   async deleteClient(id: string): Promise<void> {
-    const { error } = await supabase.from('plannifier_clients').delete().eq('id', id);
+    const { error } = await supabase.from('planifier_clients').delete().eq('id', id);
     if (error) {
       console.error('Error al eliminar cliente de Supabase:', error);
       throw error;

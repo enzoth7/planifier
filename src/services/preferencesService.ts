@@ -13,7 +13,7 @@ const DEFAULT_OPACITY = 30;
 
 /**
  * Obtiene las preferencias almacenadas en localStorage de forma síncrona
- * con aislamiento estricto por userEmail (clave: plannifier_pref_${userEmail}).
+ * con aislamiento estricto por userEmail (clave: planifier_pref_${userEmail}).
  */
 export function getStoredPreferences(userEmail: string): UserPreferences {
   const defaults: UserPreferences = {
@@ -27,7 +27,7 @@ export function getStoredPreferences(userEmail: string): UserPreferences {
   if (!userEmail) return defaults;
 
   try {
-    const raw = localStorage.getItem(`plannifier_pref_${userEmail}`);
+    const raw = localStorage.getItem(`planifier_pref_${userEmail}`);
     if (raw) {
       const parsed = JSON.parse(raw);
       return {
@@ -38,15 +38,15 @@ export function getStoredPreferences(userEmail: string): UserPreferences {
     }
 
     // Fallback inteligente para migración de claves previas por email
-    const legacyBg = localStorage.getItem(`plannifier_bg_image_${userEmail}`);
-    const legacyOpacity = localStorage.getItem(`plannifier_bg_opacity_${userEmail}`);
+    const legacyBg = localStorage.getItem(`planifier_bg_image_${userEmail}`);
+    const legacyOpacity = localStorage.getItem(`planifier_bg_opacity_${userEmail}`);
     if (legacyBg || legacyOpacity) {
       const migrated: UserPreferences = {
         ...defaults,
         bgImage: legacyBg || defaults.bgImage,
         bgOpacity: legacyOpacity ? Number(legacyOpacity) : defaults.bgOpacity,
       };
-      localStorage.setItem(`plannifier_pref_${userEmail}`, JSON.stringify(migrated));
+      localStorage.setItem(`planifier_pref_${userEmail}`, JSON.stringify(migrated));
       return migrated;
     }
   } catch (err) {
@@ -61,9 +61,9 @@ export const preferencesService = {
 
   /**
    * Carga las preferencias del usuario:
-   * 1. Lee primero de localStorage con clave única plannifier_pref_${userEmail} para respuesta instantánea.
+   * 1. Lee primero de localStorage con clave única planifier_pref_${userEmail} para respuesta instantánea.
    * 2. Si no existe en localStorage, usa valores por defecto (bgImage: '/Bg.png', bgOpacity: 30).
-   * 3. Consulta en segundo plano la tabla plannifier_user_preferences en Supabase (user_email.eq.${userEmail}).
+   * 3. Consulta en segundo plano la tabla planifier_user_preferences en Supabase (user_email.eq.${userEmail}).
    *    Si hay datos en Supabase, los guarda en localStorage y los retorna.
    */
   async loadPreferences(userEmail: string): Promise<UserPreferences> {
@@ -73,7 +73,7 @@ export const preferencesService = {
 
     try {
       const { data, error } = await supabase
-        .from('plannifier_user_preferences')
+        .from('planifier_user_preferences')
         .select('*')
         .eq('user_email', userEmail)
         .maybeSingle();
@@ -93,7 +93,7 @@ export const preferencesService = {
         };
 
         try {
-          localStorage.setItem(`plannifier_pref_${userEmail}`, JSON.stringify(remotePref));
+          localStorage.setItem(`planifier_pref_${userEmail}`, JSON.stringify(remotePref));
         } catch (e) {
           console.warn('[preferencesService] Error actualizando cache localStorage:', e);
         }
@@ -109,9 +109,9 @@ export const preferencesService = {
 
   /**
    * Guarda las preferencias del usuario:
-   * 1. Guarda en localStorage bajo plannifier_pref_${userEmail}.
-   *    ELIMINA cualquier clave global compartida (plannifier_bg_image, plannifier_bg_opacity).
-   * 2. Realiza upsert en Supabase plannifier_user_preferences.
+   * 1. Guarda en localStorage bajo planifier_pref_${userEmail}.
+   *    ELIMINA cualquier clave global compartida (planifier_bg_image, planifier_bg_opacity).
+   * 2. Realiza upsert en Supabase planifier_user_preferences.
    */
   async savePreferences(userEmail: string, updates: Partial<UserPreferences>): Promise<void> {
     if (!userEmail) return;
@@ -125,20 +125,20 @@ export const preferencesService = {
 
     // 1. Persistencia síncrona en localStorage aislado
     try {
-      localStorage.setItem(`plannifier_pref_${userEmail}`, JSON.stringify(merged));
+      localStorage.setItem(`planifier_pref_${userEmail}`, JSON.stringify(merged));
 
       // ELIMINAR cualquier residuo en claves globales compartidas
-      localStorage.removeItem('plannifier_bg_image');
-      localStorage.removeItem('plannifier_bg_opacity');
-      localStorage.removeItem(`plannifier_bg_image_${userEmail}`);
-      localStorage.removeItem(`plannifier_bg_opacity_${userEmail}`);
+      localStorage.removeItem('planifier_bg_image');
+      localStorage.removeItem('planifier_bg_opacity');
+      localStorage.removeItem(`planifier_bg_image_${userEmail}`);
+      localStorage.removeItem(`planifier_bg_opacity_${userEmail}`);
     } catch (err) {
       console.warn(`[preferencesService] Error al guardar en localStorage para ${userEmail}:`, err);
     }
 
     // 2. Persistencia en Supabase
     try {
-      const { error } = await supabase.from('plannifier_user_preferences').upsert(
+      const { error } = await supabase.from('planifier_user_preferences').upsert(
         {
           user_email: userEmail,
           bg_image: merged.bgImage,

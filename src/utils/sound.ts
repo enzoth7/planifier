@@ -9,7 +9,7 @@ class SoundController {
 
   constructor() {
     // Read persisted mute setting
-    const saved = localStorage.getItem('plannifier_sound_muted');
+    const saved = localStorage.getItem('planifier_sound_muted');
     this.isMuted = saved === 'true';
   }
 
@@ -29,7 +29,7 @@ class SoundController {
 
   public toggleMute(): boolean {
     this.isMuted = !this.isMuted;
-    localStorage.setItem('plannifier_sound_muted', String(this.isMuted));
+    localStorage.setItem('planifier_sound_muted', String(this.isMuted));
     if (!this.isMuted) {
       this.playTock();
     }

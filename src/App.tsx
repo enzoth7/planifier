@@ -40,7 +40,7 @@ export const App: React.FC = () => {
 
   // Estado de sesión autenticada
   const [authenticatedUser, setAuthenticatedUser] = useState<UserProfile | null>(() => {
-    const email = localStorage.getItem('plannifier_auth_email');
+    const email = localStorage.getItem('planifier_auth_email');
     return APP_USERS.find((u) => u.email === email) || null;
   });
 
@@ -70,14 +70,14 @@ export const App: React.FC = () => {
   const handleLogin = (email: string) => {
     const user = APP_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
     if (!user) return;
-    localStorage.setItem('plannifier_auth_email', user.email);
+    localStorage.setItem('planifier_auth_email', user.email);
     setAuthenticatedUser(user);
     handleNavigateEndpoint(user.endpoint);
     preferencesService.loadPreferences(user.email).then(setPreferences);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('plannifier_auth_email');
+    localStorage.removeItem('planifier_auth_email');
     setAuthenticatedUser(null);
   };
 
@@ -309,8 +309,12 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateAction = (action: ActionItem) => {
-    setActions((prev) => prev.map((a) => (a.id === action.id ? action : a)));
-    actionsService.updateAction(action).catch(console.error);
+    const updated: ActionItem = {
+      ...action,
+      workspaceScope: currentEndpoint === 'polarist' ? 'polarist' : (action.workspaceScope || 'personal'),
+    };
+    setActions((prev) => prev.map((a) => (a.id === action.id ? updated : a)));
+    actionsService.updateAction(updated).catch(console.error);
   };
 
   const handleUpdateColor = (id: string, color: VintageColorKey) => {
@@ -343,7 +347,11 @@ export const App: React.FC = () => {
     setActions((prev) =>
       prev.map((item) => {
         if (item.id === id) {
-          const updated = { ...item, target };
+          const updated: ActionItem = {
+            ...item,
+            target,
+            workspaceScope: currentEndpoint === 'polarist' ? 'polarist' : (item.workspaceScope || 'personal'),
+          };
           actionsService.updateAction(updated).catch(console.error);
           return updated;
         }
@@ -356,7 +364,12 @@ export const App: React.FC = () => {
     setActions((prev) =>
       prev.map((item) => {
         if (item.id === id) {
-          const updated = { ...item, target, tagColor: color };
+          const updated: ActionItem = {
+            ...item,
+            target,
+            tagColor: color,
+            workspaceScope: currentEndpoint === 'polarist' ? 'polarist' : (item.workspaceScope || 'personal'),
+          };
           actionsService.updateAction(updated).catch(console.error);
           return updated;
         }
@@ -591,7 +604,12 @@ export const App: React.FC = () => {
 
   const handleSaveModalItem = (itemData: Partial<ActionItem>) => {
     if (editingItem) {
-      const updatedItem = { ...editingItem, ...itemData } as ActionItem;
+      const isPolarist = currentEndpoint === 'polarist';
+      const updatedItem: ActionItem = {
+        ...editingItem,
+        ...itemData,
+        workspaceScope: isPolarist ? 'polarist' : (editingItem.workspaceScope || 'personal'),
+      };
       setActions((prev) =>
         prev.map((item) => (item.id === editingItem.id ? updatedItem : item))
       );

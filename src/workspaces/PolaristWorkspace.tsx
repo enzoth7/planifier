@@ -15,6 +15,7 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
   onNavigateEndpoint,
   onLogout,
   onAddAction,
+  onUpdateAction,
   onDeleteAction,
   onCompleteAction,
   onAddClient,
@@ -104,6 +105,33 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
     });
   };
 
+  const handleUpdateTarget = (id: string, target: string) => {
+    const item = actions.find((a) => a.id === id);
+    if (item) {
+      onUpdateAction({
+        ...item,
+        target,
+        workspaceScope: 'polarist',
+      });
+    } else if (onUpdateTarget) {
+      onUpdateTarget(id, target);
+    }
+  };
+
+  const handleUpdateTargetAndColor = (id: string, target: string, color: VintageColorKey) => {
+    const item = actions.find((a) => a.id === id);
+    if (item) {
+      onUpdateAction({
+        ...item,
+        target,
+        tagColor: color,
+        workspaceScope: 'polarist',
+      });
+    } else if (onUpdateTargetAndColor) {
+      onUpdateTargetAndColor(id, target, color);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Contextualizado para Polarist con Selector de Miembros */}
@@ -140,8 +168,8 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
           onDelete={onDeleteAction}
           onUpdateColor={onUpdateColor || (() => {})}
           onUpdateValue={onUpdateValue || (() => {})}
-          onUpdateTarget={onUpdateTarget}
-          onUpdateTargetAndColor={onUpdateTargetAndColor}
+          onUpdateTarget={handleUpdateTarget}
+          onUpdateTargetAndColor={handleUpdateTargetAndColor}
           onUpdateDeadline={onUpdateDeadline}
           onToggleExpand={onToggleExpand || (() => {})}
           onToggleSubtask={onToggleSubtask || (() => {})}

@@ -36,7 +36,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               <ShieldCheck className="w-6 h-6 text-emerald-400 stroke-[2.2]" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-              Plannifier
+              Planifier
             </h1>
           </div>
 

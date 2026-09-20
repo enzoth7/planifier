@@ -1,7 +1,7 @@
 import { ActionItem, ClientItem } from '../types';
 
-const STORAGE_KEY = 'plannifier_board_items_v1';
-const CLIENTS_STORAGE_KEY = 'plannifier_clients_v1';
+const STORAGE_KEY = 'planifier_board_items_v1';
+const CLIENTS_STORAGE_KEY = 'planifier_clients_v1';
 
 export const INITIAL_CLIENTS: ClientItem[] = [
   { id: 'client-polarist', name: 'Polarist', type: 'cliente', color: 'emerald', country: 'Uruguay' },
@@ -149,16 +149,16 @@ export function loadStoredActions(): ActionItem[] {
       }
     }
     const isSeeded =
-      localStorage.getItem('plannifier_db_seeded') === 'true' ||
-      localStorage.getItem('plannifier_supabase_seeded_v2') === 'true';
+      localStorage.getItem('planifier_db_seeded') === 'true' ||
+      localStorage.getItem('planifier_supabase_seeded_v2') === 'true';
 
     if (isSeeded) {
       return [];
     }
 
     saveStoredActions(INITIAL_ACTIONS);
-    localStorage.setItem('plannifier_db_seeded', 'true');
-    localStorage.setItem('plannifier_supabase_seeded_v2', 'true');
+    localStorage.setItem('planifier_db_seeded', 'true');
+    localStorage.setItem('planifier_supabase_seeded_v2', 'true');
     return INITIAL_ACTIONS;
   } catch (err) {
     console.error('Error loading stored actions:', err);
@@ -179,7 +179,7 @@ export function exportBoardToJSON(actions: ActionItem[]): void {
   const downloadAnchor = document.createElement('a');
   const todayStr = new Date().toISOString().split('T')[0];
   downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", `plannifier-backup-${todayStr}.json`);
+  downloadAnchor.setAttribute("download", `planifier-backup-${todayStr}.json`);
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
@@ -238,16 +238,16 @@ export function loadStoredClients(): ClientItem[] {
       }
     }
     const isSeeded =
-      localStorage.getItem('plannifier_db_seeded') === 'true' ||
-      localStorage.getItem('plannifier_supabase_seeded_v2') === 'true';
+      localStorage.getItem('planifier_db_seeded') === 'true' ||
+      localStorage.getItem('planifier_supabase_seeded_v2') === 'true';
 
     if (isSeeded) {
       return [];
     }
 
     saveStoredClients(INITIAL_CLIENTS);
-    localStorage.setItem('plannifier_db_seeded', 'true');
-    localStorage.setItem('plannifier_supabase_seeded_v2', 'true');
+    localStorage.setItem('planifier_db_seeded', 'true');
+    localStorage.setItem('planifier_supabase_seeded_v2', 'true');
     return INITIAL_CLIENTS;
   } catch (err) {
     console.error('Error loading stored clients:', err);
