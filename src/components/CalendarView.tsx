@@ -53,8 +53,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onOpenCreateModal,
   onVisibleRangeStatsChange,
 }) => {
-  // Lunes inicial de la ventana de 4 semanas (28 días)
-  const [startDate, setStartDate] = useState<Date>(() => getMondayOfWeek(new Date()));
+  // La ventana principal muestra: semana anterior + actual + dos siguientes.
+  const [startDate, setStartDate] = useState<Date>(() =>
+    addDays(getMondayOfWeek(new Date()), -7)
+  );
   const [dragOverDayIso, setDragOverDayIso] = useState<string | null>(null);
   const [isDragOverTray, setIsDragOverTray] = useState(false);
   const [isUnscheduledOpen, setIsUnscheduledOpen] = useState(false);
@@ -134,7 +136,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   const handleToday = () => {
     soundFx.playTock();
-    setStartDate(getMondayOfWeek(new Date()));
+    setStartDate(addDays(getMondayOfWeek(new Date()), -7));
   };
 
   // Drag & Drop en casilleros de días
@@ -375,7 +377,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     isDragTarget
                       ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-500 shadow-md'
                       : day.isCurrentDay
-                      ? 'bg-white/95 backdrop-blur-md border-zinc-400/70 shadow-sm ring-1 ring-zinc-300'
+                      ? 'bg-amber-50/95 backdrop-blur-md border-amber-400 shadow-md ring-2 ring-amber-300/80'
                       : 'bg-white/85 backdrop-blur-md border-white/70 hover:border-zinc-300/80 hover:bg-white/95 shadow-xs'
                   }`}
                 >
@@ -386,7 +388,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       <div className="flex items-center gap-1">
                         {day.isCurrentDay ? (
                           <span
-                            className="w-5 h-5 rounded-full bg-zinc-900 text-white text-[11px] font-bold flex items-center justify-center shadow-xs"
+                            className="w-5 h-5 rounded-full bg-amber-500 text-amber-950 text-[11px] font-bold flex items-center justify-center shadow-xs ring-2 ring-amber-200"
                             title="Hoy"
                           >
                             {day.dayNumber}

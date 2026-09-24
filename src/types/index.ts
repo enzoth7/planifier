@@ -199,6 +199,8 @@ export interface ClientItem {
   name: string;
   type: ClientType;
   owner?: ClientOwner;
+  /** Perfil compartido provisto por el sistema; no puede renombrarse ni eliminarse. */
+  isSystem?: boolean;
   color: VintageColorKey;
   country?: string;
   createdAt?: string;

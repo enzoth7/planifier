@@ -7,6 +7,7 @@ import { CalendarView } from '../components/CalendarView';
 import { CompletedTable } from '../components/CompletedTable';
 import { ClientsTable } from '../components/ClientsTable';
 import { BackgroundSelector } from '../components/BackgroundSelector';
+import { isPolaristTeamClient } from '../utils/clients';
 
 const ENZO_EMAIL = 'enzothome1@gmail.com';
 
@@ -53,7 +54,7 @@ export const EnzoWorkspace: React.FC<WorkspaceProps> = ({
 
   // Aislamiento estricto de clientes personales de Enzo
   const enzoClients = useMemo(() => {
-    return clients.filter((c) => (c.owner || 'enzo') === 'enzo');
+    return clients.filter((c) => (c.owner || 'enzo') === 'enzo' || isPolaristTeamClient(c));
   }, [clients]);
 
   // Aislamiento estricto de acciones activas de Enzo (excluye tareas de Polarist)

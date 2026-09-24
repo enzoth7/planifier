@@ -7,6 +7,7 @@ import { CalendarView } from '../components/CalendarView';
 import { CompletedTable } from '../components/CompletedTable';
 import { ClientsTable } from '../components/ClientsTable';
 import { BackgroundSelector } from '../components/BackgroundSelector';
+import { getPersonalClientsWithPolarist } from '../utils/clients';
 
 const CRISTIAN_EMAIL = 'cristianpayret@gmail.com';
 
@@ -53,7 +54,7 @@ export const CristianWorkspace: React.FC<WorkspaceProps> = ({
 
   // Aislamiento estricto de clientes de Cristian
   const cristianClients = useMemo(() => {
-    return clients.filter((c) => c.owner === 'cristian');
+    return getPersonalClientsWithPolarist(clients, 'cristian');
   }, [clients]);
 
   // Aislamiento estricto de acciones activas de Cristian

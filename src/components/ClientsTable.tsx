@@ -6,11 +6,13 @@ import {
   Edit2,
   Check,
   ChevronDown,
+  Lock,
 } from 'lucide-react';
 import { ClientItem, ClientType, VintageColorKey, VINTAGE_COLORS, ActionItem } from '../types';
 import { soundFx } from '../utils/sound';
 import { COUNTRIES, DEFAULT_COUNTRY } from '../utils/countries';
 import { CountryFlag } from './CountryFlag';
+import { isPolaristTeamClient } from '../utils/clients';
 
 interface ClientsTableProps {
   clients: ClientItem[];
@@ -303,6 +305,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
       ) : (
         <div className="divide-y divide-zinc-200/60 rounded-b-xl">
           {clients.map((client, idx) => {
+            const isSystemClient = isPolaristTeamClient(client);
             const colorDef = VINTAGE_COLORS[client.color] || VINTAGE_COLORS.emerald;
             const isEditing = editingId === client.id;
             const isColorPopoverOpen = activeColorPopoverId === client.id;
@@ -330,7 +333,7 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                   <div className="flex-1 grid grid-cols-12 gap-3 sm:gap-6 items-center min-w-0">
                     {/* Col 1: Nombre */}
                     <div className="col-span-12 md:col-span-4 min-w-0">
-                      {isEditing ? (
+                      {isEditing && !isSystemClient ? (
                         <div className="flex items-center gap-1.5">
                           <input
                             type="text"
@@ -358,9 +361,9 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                         </div>
                       ) : (
                         <div
-                          className="flex items-center gap-2 cursor-pointer"
-                          onDoubleClick={() => handleStartEditing(client)}
-                          title="Doble click para editar nombre"
+                          className={`flex items-center gap-2 ${isSystemClient ? '' : 'cursor-pointer'}`}
+                          onDoubleClick={() => !isSystemClient && handleStartEditing(client)}
+                          title={isSystemClient ? 'Perfil de equipo protegido' : 'Doble click para editar nombre'}
                         >
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${colorDef.bg} ${colorDef.border} ${colorDef.text}`}
@@ -370,14 +373,21 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
                             </span>
                           </span>
 
-                          <button
-                            type="button"
-                            onClick={() => handleStartEditing(client)}
-                            className="opacity-0 group-hover:opacity-60 hover:opacity-100 p-1 text-zinc-400 hover:text-zinc-700 transition-opacity"
-                            title="Editar nombre"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </button>
+                          {isSystemClient ? (
+                            <span className="inline-flex items-center gap-1 rounded bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+                              <Lock className="h-2.5 w-2.5" />
+                              Equipo
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditing(client)}
+                              className="opacity-0 group-hover:opacity-60 hover:opacity-100 p-1 text-zinc-400 hover:text-zinc-700 transition-opacity"
+                              title="Editar nombre"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -505,17 +515,23 @@ export const ClientsTable: React.FC<ClientsTableProps> = ({
 
                     {/* Col 4: Acciones (Únicamente botón eliminar instantáneo con 1 clic) */}
                     <div className="col-span-2 md:col-span-2 flex items-center justify-end pr-2 min-w-0">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteClient(client.id);
-                        }}
-                        title="Eliminar cliente"
-                        className="p-1 rounded text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors flex-shrink-0"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {isSystemClient ? (
+                        <span title="Polarist (Equipo) no se puede eliminar" className="p-1 text-zinc-400">
+                          <Lock className="w-3.5 h-3.5" />
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteClient(client.id);
+                          }}
+                          title="Eliminar cliente"
+                          className="p-1 rounded text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors flex-shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

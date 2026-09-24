@@ -30,6 +30,11 @@ import { ClientModal } from './components/ClientModal';
 import { LoginScreen } from './components/LoginScreen';
 import { Loader2 } from 'lucide-react';
 import { INITIAL_OBJECTIVES } from './data/objectives';
+import {
+  ensurePolaristTeamClient,
+  getPersonalClientsWithPolarist,
+  isPolaristTeamClient,
+} from './utils/clients';
 
 export const App: React.FC = () => {
   const [actions, setActions] = useState<ActionItem[]>([]);
@@ -186,7 +191,7 @@ export const App: React.FC = () => {
           const stored = loadStoredActions();
           setActions(stored.filter((a) => !a.completed));
           setCompletedActions(stored.filter((a) => a.completed));
-          setClients(loadStoredClients());
+          setClients(ensurePolaristTeamClient(loadStoredClients()));
         }
       } finally {
         if (isMounted) {
@@ -216,12 +221,12 @@ export const App: React.FC = () => {
       return clients.filter((c) => c.owner === 'polarist');
     }
     if (currentEndpoint === 'cristian') {
-      return clients.filter((c) => c.owner === 'cristian');
+      return getPersonalClientsWithPolarist(clients, 'cristian');
     }
     if (currentEndpoint === 'julieta') {
-      return clients.filter((c) => c.owner === 'juli');
+      return getPersonalClientsWithPolarist(clients, 'juli');
     }
-    return clients.filter((c) => (c.owner || 'enzo') === 'enzo');
+    return clients.filter((c) => (c.owner || 'enzo') === 'enzo' || isPolaristTeamClient(c));
   }, [clients, currentEndpoint]);
 
   // Handlers para Acciones
@@ -534,8 +539,10 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateClient = (client: ClientItem) => {
+    const existingClient = clients.find((item) => item.id === client.id);
+    const protectedClient = existingClient && isPolaristTeamClient(existingClient);
     const owner: ClientOwner =
-      client.owner ||
+      (protectedClient ? 'polarist' : client.owner) ||
       (currentEndpoint === 'polarist'
         ? 'polarist'
         : currentEndpoint === 'cristian'
@@ -543,19 +550,24 @@ export const App: React.FC = () => {
         : currentEndpoint === 'julieta'
         ? 'juli'
         : 'enzo');
-    const updatedClient: ClientItem = { ...client, owner };
+    const updatedClient: ClientItem = protectedClient
+      ? { ...client, name: 'Polarist', owner: 'polarist', isSystem: true }
+      : { ...client, owner };
     setClients((prev) => prev.map((c) => (c.id === client.id ? updatedClient : c)));
     actionsService.updateClient(updatedClient).catch(console.error);
   };
 
   const handleDeleteClient = (id: string) => {
+    const clientToDelete = clients.find((client) => client.id === id);
+    if (!clientToDelete || isPolaristTeamClient(clientToDelete)) return;
+
     soundFx.playTock();
     setClients((prev) => {
       const updated = prev.filter((c) => c.id !== id);
       saveStoredClients(updated);
       return updated;
     });
-    actionsService.deleteClient(id).catch((err) => {
+    actionsService.deleteClient(clientToDelete).catch((err) => {
       console.error('Error al eliminar cliente en Supabase:', err);
     });
   };

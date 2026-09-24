@@ -2,6 +2,7 @@ import { supabase } from '../utils/supabase';
 import { ActionItem, ClientItem, ClientType, ClientOwner, ObjectiveItem, TaskType, VintageColorKey } from '../types';
 import { INITIAL_ACTIONS, INITIAL_CLIENTS } from '../utils/storage';
 import { INITIAL_OBJECTIVES } from '../data/objectives';
+import { isPolaristTeamClient, POLARIST_TEAM_CLIENT_ID } from '../utils/clients';
 
 const parseObjectiveNotes = (rawNotes: unknown, fallbackQuarterlyGoal = '') => {
   if (typeof rawNotes !== 'string' || !rawNotes.trim()) {
@@ -550,7 +551,7 @@ export const actionsService = {
           clientType = (rawType as ClientType) || 'cliente';
         }
 
-        return {
+        const client: ClientItem = {
           id: row.id,
           name: row.name ?? '',
           type: clientType,
@@ -559,6 +560,7 @@ export const actionsService = {
           country: row.country || 'Uruguay',
           createdAt: row.created_at,
         };
+        return isPolaristTeamClient(client) ? { ...client, isSystem: true } : client;
       });
     } else if (!isDbSeeded) {
       if (typeof window !== 'undefined') {
@@ -587,21 +589,41 @@ export const actionsService = {
       }));
     }
 
-    // No inyectar cliente mock client-polarist-enterprise si ya existe cliente con owner 'polarist'
-    const hasPolaristClient = clientList.some(
-      (c) => c.owner === 'polarist' || c.name.trim().toLowerCase() === 'polarist'
-    );
-    if (!hasPolaristClient && clientList.length === 0) {
+    // El perfil compartido es fijo. Si fue borrado en una versión anterior,
+    // se restaura aunque la base ya tenga otros clientes.
+    const polaristIndex = clientList.findIndex(isPolaristTeamClient);
+    if (polaristIndex >= 0) {
+      clientList[polaristIndex] = {
+        ...clientList[polaristIndex],
+        name: 'Polarist',
+        owner: 'polarist',
+        isSystem: true,
+      };
+    } else {
       const defaultPolaristClient: ClientItem = {
-        id: 'client-1',
+        id: POLARIST_TEAM_CLIENT_ID,
         name: 'Polarist',
         type: 'cliente',
         owner: 'polarist',
+        isSystem: true,
         color: 'emerald',
         country: 'Uruguay',
         createdAt: new Date().toISOString(),
       };
       clientList.unshift(defaultPolaristClient);
+
+      const { error: restoreError } = await supabase.from(CLIENTS_TABLE).upsert({
+        id: defaultPolaristClient.id,
+        name: defaultPolaristClient.name,
+        type: defaultPolaristClient.type,
+        owner: defaultPolaristClient.owner,
+        color: defaultPolaristClient.color,
+        country: defaultPolaristClient.country,
+        created_at: defaultPolaristClient.createdAt,
+      });
+      if (restoreError) {
+        console.warn('No se pudo restaurar el perfil compartido de Polarist en Supabase.', restoreError);
+      }
     }
 
     return clientList;
@@ -632,9 +654,10 @@ export const actionsService = {
    * Actualiza los datos de un cliente/interesado en `planifier_clients`.
    */
   async updateClient(client: ClientItem): Promise<void> {
-    const ownerToSave = client.owner || 'enzo';
+    const protectedClient = isPolaristTeamClient(client);
+    const ownerToSave = protectedClient ? 'polarist' : client.owner || 'enzo';
     const row = {
-      name: client.name,
+      name: protectedClient ? 'Polarist' : client.name,
       type: client.type || 'cliente',
       owner: ownerToSave,
       color: client.color,
@@ -650,8 +673,12 @@ export const actionsService = {
   /**
    * Elimina un cliente de `planifier_clients`.
    */
-  async deleteClient(id: string): Promise<void> {
-    const { error } = await supabase.from(CLIENTS_TABLE).delete().eq('id', id);
+  async deleteClient(client: ClientItem): Promise<void> {
+    if (isPolaristTeamClient(client)) {
+      throw new Error('El perfil Polarist (Equipo) es parte del sistema y no puede eliminarse.');
+    }
+
+    const { error } = await supabase.from(CLIENTS_TABLE).delete().eq('id', client.id);
     if (error) {
       console.error('Error al eliminar cliente de Supabase:', error);
       throw error;

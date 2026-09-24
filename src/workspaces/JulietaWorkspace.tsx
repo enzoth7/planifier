@@ -7,6 +7,7 @@ import { CalendarView } from '../components/CalendarView';
 import { CompletedTable } from '../components/CompletedTable';
 import { ClientsTable } from '../components/ClientsTable';
 import { BackgroundSelector } from '../components/BackgroundSelector';
+import { getPersonalClientsWithPolarist } from '../utils/clients';
 
 const JULIETA_EMAIL = 'juliperez2803@gmail.com';
 
@@ -53,7 +54,7 @@ export const JulietaWorkspace: React.FC<WorkspaceProps> = ({
 
   // Aislamiento estricto de clientes de Julieta
   const julietaClients = useMemo(() => {
-    return clients.filter((c) => c.owner === 'juli');
+    return getPersonalClientsWithPolarist(clients, 'juli');
   }, [clients]);
 
   // Aislamiento estricto de acciones activas de Julieta

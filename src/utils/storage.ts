@@ -6,7 +6,7 @@ const LEGACY_STORAGE_KEY = 'plannifier_board_items_v1';
 const LEGACY_CLIENTS_STORAGE_KEY = 'plannifier_clients_v1';
 
 export const INITIAL_CLIENTS: ClientItem[] = [
-  { id: 'client-polarist', name: 'Polarist', type: 'cliente', color: 'emerald', country: 'Uruguay' },
+  { id: 'client-polarist', name: 'Polarist', type: 'cliente', owner: 'polarist', isSystem: true, color: 'emerald', country: 'Uruguay' },
   { id: 'client-1', name: 'Polarist Enterprise', type: 'interesado', color: 'emerald', country: 'Uruguay' },
   { id: 'client-2', name: 'Infraestructura Cloud', type: 'cliente', color: 'navy', country: 'Estados Unidos' },
   { id: 'client-3', name: 'Grupo Automotor Sur', type: 'cliente', color: 'yellow', country: 'Uruguay' },
