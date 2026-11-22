@@ -91,6 +91,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     let visibleCount = 0;
 
     items.forEach((item) => {
+      // Los proyectos no tienen fecha propia: viven solo en el tablero.
+      if (item.taskType === 'project') return;
+
       if (!item.deadline || item.deadline.trim() === '') {
         unscheduled.push(item);
       } else {

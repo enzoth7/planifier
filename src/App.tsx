@@ -423,79 +423,6 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleToggleExpand = (id: string) => {
-    setActions((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, isExpanded: !item.isExpanded } : item))
-    );
-  };
-
-  const handleToggleSubtask = (itemId: string, subtaskId: string) => {
-    setActions((prev) =>
-      prev.map((item) => {
-        if (item.id === itemId) {
-          const updatedSubtasks = (item.subtasks || []).map((st) =>
-            st.id === subtaskId ? { ...st, done: !st.done } : st
-          );
-          const updated = { ...item, subtasks: updatedSubtasks };
-          actionsService.updateAction(updated).catch(console.error);
-          return updated;
-        }
-        return item;
-      })
-    );
-  };
-
-  const handleAddSubtask = (itemId: string, text: string) => {
-    setActions((prev) =>
-      prev.map((item) => {
-        if (item.id === itemId) {
-          const newSubtask = {
-            id: `st-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            text,
-            done: false,
-          };
-          const updated = {
-            ...item,
-            subtasks: [...(item.subtasks || []), newSubtask],
-            isExpanded: true,
-          };
-          actionsService.updateAction(updated).catch(console.error);
-          return updated;
-        }
-        return item;
-      })
-    );
-  };
-
-  const handleDeleteSubtask = (itemId: string, subtaskId: string) => {
-    setActions((prev) =>
-      prev.map((item) => {
-        if (item.id === itemId) {
-          const updated = {
-            ...item,
-            subtasks: (item.subtasks || []).filter((st) => st.id !== subtaskId),
-          };
-          actionsService.updateAction(updated).catch(console.error);
-          return updated;
-        }
-        return item;
-      })
-    );
-  };
-
-  const handleUpdateNotes = (itemId: string, notes: string) => {
-    setActions((prev) =>
-      prev.map((item) => {
-        if (item.id === itemId) {
-          const updated = { ...item, notes };
-          actionsService.updateAction(updated).catch(console.error);
-          return updated;
-        }
-        return item;
-      })
-    );
-  };
-
   const handleUpdateUserEmail = (id: string, userEmail: string) => {
     setActions((prev) =>
       prev.map((item) => {
@@ -739,11 +666,6 @@ export const App: React.FC = () => {
     onUpdateTarget: handleUpdateTarget,
     onUpdateTargetAndColor: handleUpdateTargetAndColor,
     onUpdateDeadline: handleUpdateDeadline,
-    onToggleExpand: handleToggleExpand,
-    onToggleSubtask: handleToggleSubtask,
-    onAddSubtask: handleAddSubtask,
-    onDeleteSubtask: handleDeleteSubtask,
-    onUpdateNotes: handleUpdateNotes,
     onUpdateUserEmail: handleUpdateUserEmail,
   };
 

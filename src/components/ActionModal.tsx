@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Check, Video } from 'lucide-react';
+import { X, Check, Video, FolderOpen } from 'lucide-react';
 import { ActionItem, ClientItem, VintageColorKey, VINTAGE_COLORS, TaskType, APP_USERS, WorkspaceMode } from '../types';
 import { ClientAutocomplete } from './ClientAutocomplete';
 
@@ -35,8 +35,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
   const [notes, setNotes] = useState('');
   const [taskType, setTaskType] = useState<TaskType>('action');
   const [userEmail, setUserEmail] = useState<string>(activeEmail);
-  const [subtasks, setSubtasks] = useState<Array<{ id: string; text: string; done: boolean }>>([]);
-  const [newSubtaskText, setNewSubtaskText] = useState('');
 
   useEffect(() => {
     if (initialData) {
@@ -48,7 +46,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       setNotes(initialData.notes || '');
       setTaskType(initialData.taskType || 'action');
       setUserEmail(initialData.userEmail || activeEmail);
-      setSubtasks(initialData.subtasks || []);
     } else {
       setTitle('');
       setTarget(workspaceMode === 'team' ? 'Polarist' : '');
@@ -57,7 +54,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       setTaskType('action');
       setUserEmail(activeEmail);
       setNotes('');
-      setSubtasks([]);
       if (defaultDeadline) {
         setDeadline(defaultDeadline);
       } else {
@@ -70,18 +66,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleAddSubtask = () => {
-    if (!newSubtaskText.trim()) return;
-    setSubtasks([
-      ...subtasks,
-      { id: `st-${Date.now()}-${Math.random()}`, text: newSubtaskText.trim(), done: false },
-    ]);
-    setNewSubtaskText('');
-  };
-
-  const handleRemoveSubtask = (id: string) => {
-    setSubtasks(subtasks.filter((s) => s.id !== id));
-  };
+  const isProject = taskType === 'project';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,9 +80,10 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       tagColor,
       value: numValue,
       currency: '$',
-      deadline,
+      // Los proyectos no tienen fecha; sus notas se editan desde el diálogo del proyecto,
+      // por eso no se envía `subtasks` y se conservan tal cual están.
+      deadline: isProject ? '' : deadline,
       notes: notes.trim(),
-      subtasks,
       userEmail,
       taskType,
     });
@@ -122,10 +108,12 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         {/* Header */}
         <div className="pb-3 mb-4 border-b border-zinc-100">
           <h2 className="text-base font-semibold text-zinc-900">
-            {initialData ? 'Editar Acción' : 'Nueva Acción'}
+            {isProject ? (initialData ? 'Editar Proyecto' : 'Nuevo Proyecto') : initialData ? 'Editar Acción' : 'Nueva Acción'}
           </h2>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Definí la acción, destinatario, valor y fecha límite.
+            {isProject
+              ? 'Definí el proyecto y su cliente. Las notas y fechas se cargan desde el tablero.'
+              : 'Definí la acción, destinatario, valor y fecha límite.'}
           </p>
         </div>
 
@@ -137,7 +125,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
               <label className="block font-medium text-zinc-700 mb-1.5">
                 Tipo de Tarea
               </label>
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 <button
                   type="button"
                   onClick={() => setTaskType('action')}
@@ -162,6 +150,19 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                 >
                   <Video className="w-3 h-3 text-purple-700" />
                   <span>Meeting</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTaskType('project')}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md font-medium transition-all cursor-pointer border ${
+                    taskType === 'project'
+                      ? 'bg-sky-100 text-sky-900 border-sky-300 shadow-xs font-semibold'
+                      : 'bg-zinc-100 text-zinc-600 border-transparent hover:bg-zinc-200/70'
+                  }`}
+                >
+                  <FolderOpen className="w-3 h-3 text-sky-700" />
+                  <span>Proyecto</span>
                 </button>
               </div>
             </div>
@@ -202,7 +203,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           {/* Título de la acción */}
           <div>
             <label className="block font-medium text-zinc-700 mb-1.5">
-              Acción / Descripción *
+              {isProject ? 'Proyecto *' : 'Acción / Descripción *'}
             </label>
             <input
               type="text"
@@ -210,7 +211,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
               autoFocus
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ej: Cierre de Contrato Anual con Polarist"
+              placeholder={isProject ? 'Ej: Web de MateArte' : 'Ej: Cierre de Contrato Anual con Polarist'}
               className="w-full bg-white text-zinc-900 px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400 text-xs"
             />
           </div>
@@ -301,82 +302,37 @@ export const ActionModal: React.FC<ActionModalProps> = ({
               />
             </div>
 
-            <div>
-              <label className="block font-medium text-zinc-700 mb-1.5">
-                Fecha Límite *
-              </label>
-              <input
-                type="date"
-                required
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                className="w-full bg-white text-zinc-800 font-mono px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400 text-xs"
-              />
-            </div>
-          </div>
-
-          {/* Renglones / Sub-tareas de Seguimiento */}
-          <div className="border-t border-zinc-100 pt-3">
-            <label className="block font-medium text-zinc-700 mb-1.5">
-              Renglones / Sub-tareas
-            </label>
-            {subtasks.length > 0 && (
-              <div className="space-y-1 max-h-32 overflow-y-auto mb-2 pr-1">
-                {subtasks.map((st) => (
-                  <div
-                    key={st.id}
-                    className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-50 border border-zinc-200"
-                  >
-                    <span className="truncate text-zinc-800 text-xs">{st.text}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSubtask(st.id)}
-                      className="text-zinc-400 hover:text-rose-600 p-0.5"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
+            {!isProject && (
+              <div>
+                <label className="block font-medium text-zinc-700 mb-1.5">
+                  Fecha Límite *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full bg-white text-zinc-800 font-mono px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400 text-xs"
+                />
               </div>
             )}
+          </div>
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newSubtaskText}
-                onChange={(e) => setNewSubtaskText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddSubtask();
-                  }
-                }}
-                placeholder="+ Añadir renglón (Enter)..."
-                className="flex-1 bg-white text-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-300 text-xs focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400"
+          {/* Notas (en los proyectos, las notas viven en el diálogo del proyecto) */}
+          {!isProject && (
+            <div>
+              <label className="block font-medium text-zinc-700 mb-1.5">
+                Notas adicionales
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Detalles sobre entregables o contexto..."
+                rows={2}
+                className="w-full bg-white text-zinc-800 p-2.5 rounded-lg border border-zinc-300 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400 text-xs"
               />
-              <button
-                type="button"
-                onClick={handleAddSubtask}
-                className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-medium"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
             </div>
-          </div>
-
-          {/* Notas */}
-          <div>
-            <label className="block font-medium text-zinc-700 mb-1.5">
-              Notas adicionales
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Detalles sobre entregables o contexto..."
-              rows={2}
-              className="w-full bg-white text-zinc-800 p-2.5 rounded-lg border border-zinc-300 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-400 text-xs"
-            />
-          </div>
+          )}
 
           {/* Footer buttons */}
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-100">
@@ -391,7 +347,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
               type="submit"
               className="px-4 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-xs transition-colors shadow-sm"
             >
-              {initialData ? 'Guardar Cambios' : 'Crear Acción'}
+              {initialData ? 'Guardar Cambios' : isProject ? 'Crear Proyecto' : 'Crear Acción'}
             </button>
           </div>
         </form>

@@ -55,10 +55,5 @@ export interface WorkspaceProps {
   onUpdateTarget?: (id: string, target: string) => void;
   onUpdateTargetAndColor?: (id: string, target: string, color: VintageColorKey) => void;
   onUpdateDeadline?: (id: string, deadline: string) => void;
-  onToggleExpand?: (id: string) => void;
-  onToggleSubtask?: (itemId: string, subtaskId: string) => void;
-  onAddSubtask?: (itemId: string, text: string) => void;
-  onDeleteSubtask?: (itemId: string, subtaskId: string) => void;
-  onUpdateNotes?: (itemId: string, notes: string) => void;
   onUpdateUserEmail?: (id: string, userEmail: string) => void;
 }

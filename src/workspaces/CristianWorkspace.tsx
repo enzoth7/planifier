@@ -39,11 +39,7 @@ export const CristianWorkspace: React.FC<WorkspaceProps> = ({
   onUpdateTarget,
   onUpdateTargetAndColor,
   onUpdateDeadline,
-  onToggleExpand,
-  onToggleSubtask,
-  onAddSubtask,
-  onDeleteSubtask,
-  onUpdateNotes,
+  onUpdateAction,
 }) => {
   // Gestión modular e independiente de pestañas de Cristian
   const [activeTab, setActiveTab] = useState<TabType>('board');
@@ -139,11 +135,7 @@ export const CristianWorkspace: React.FC<WorkspaceProps> = ({
           onUpdateTarget={onUpdateTarget}
           onUpdateTargetAndColor={onUpdateTargetAndColor}
           onUpdateDeadline={onUpdateDeadline}
-          onToggleExpand={onToggleExpand || (() => {})}
-          onToggleSubtask={onToggleSubtask || (() => {})}
-          onAddSubtask={onAddSubtask || (() => {})}
-          onDeleteSubtask={onDeleteSubtask || (() => {})}
-          onUpdateNotes={onUpdateNotes || (() => {})}
+          onUpdateAction={onUpdateAction}
           onNavigateToClients={() => setActiveTab('clients')}
           onOpenCreateModal={() => onOpenCreateModal()}
           onQuickAdd={handleQuickAdd}

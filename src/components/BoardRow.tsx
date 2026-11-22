@@ -5,15 +5,14 @@ import {
   GripVertical,
   Check,
   ChevronDown,
-  ChevronRight,
   Trash2,
   Edit2,
   Video,
+  FolderOpen,
 } from 'lucide-react';
 import { ActionItem, ClientItem, VintageColorKey, WorkspaceMode, getUserByEmail, APP_USERS } from '../types';
-import { formatDisplayDate } from '../utils/dates';
+import { formatDisplayDate, toISODateString } from '../utils/dates';
 import { ClientSelectPopover } from './ClientSelectPopover';
-import { SubtaskLines } from './SubtaskLines';
 
 interface BoardRowProps {
   item: ActionItem;
@@ -28,11 +27,7 @@ interface BoardRowProps {
   onUpdateTarget?: (id: string, target: string) => void;
   onUpdateTargetAndColor?: (id: string, target: string, color: VintageColorKey) => void;
   onUpdateDeadline?: (id: string, deadline: string) => void;
-  onToggleExpand: (id: string) => void;
-  onToggleSubtask: (itemId: string, subtaskId: string) => void;
-  onAddSubtask: (itemId: string, text: string) => void;
-  onDeleteSubtask: (itemId: string, subtaskId: string) => void;
-  onUpdateNotes: (itemId: string, notes: string) => void;
+  onOpenProject: (id: string) => void;
   onNavigateToClients?: () => void;
   onUpdateUserEmail?: (id: string, userEmail: string) => void;
 }
@@ -50,11 +45,7 @@ export const BoardRow: React.FC<BoardRowProps> = ({
   onUpdateTarget,
   onUpdateTargetAndColor,
   onUpdateDeadline,
-  onToggleExpand,
-  onToggleSubtask,
-  onAddSubtask,
-  onDeleteSubtask,
-  onUpdateNotes,
+  onOpenProject,
   onNavigateToClients,
   onUpdateUserEmail,
 }) => {
@@ -99,10 +90,18 @@ export const BoardRow: React.FC<BoardRowProps> = ({
 
   const assignedUser = getUserByEmail(item.userEmail);
 
-  const subtasksCount = item.subtasks ? item.subtasks.length : 0;
-  const completedSubtasksCount = item.subtasks
-    ? item.subtasks.filter((s) => s.done).length
-    : 0;
+  const isProject = item.taskType === 'project';
+
+  // Resumen de las notas de un proyecto: cuántas faltan y cuál es la fecha más próxima.
+  const pendingNotes = isProject ? (item.subtasks || []).filter((n) => !n.done) : [];
+  const nextNoteDeadline = pendingNotes
+    .map((n) => n.deadline)
+    .filter((d): d is string => !!d)
+    .sort()[0];
+  const hasOverdueNote = !!nextNoteDeadline && nextNoteDeadline < toISODateString(new Date());
+  const projectSummary = pendingNotes.length === 0
+    ? ((item.subtasks || []).length > 0 ? 'Todo al día' : 'Sin notas')
+    : `${pendingNotes.length} ${pendingNotes.length === 1 ? 'pendiente' : 'pendientes'}`;
 
   const handleValueSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -157,7 +156,15 @@ export const BoardRow: React.FC<BoardRowProps> = ({
                 {/* Badges y Título en el mismo renglón */}
                 <div className="flex items-center gap-2 min-w-0">
                   {/* Badge del tipo de tarea: Acción vs Meeting */}
-                  {item.taskType === 'meeting' ? (
+                  {isProject ? (
+                    <span
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200/80 shadow-2xs flex-shrink-0"
+                      title="Proyecto"
+                    >
+                      <FolderOpen className="w-2.5 h-2.5 stroke-[2.5]" />
+                      <span>Proyecto</span>
+                    </span>
+                  ) : item.taskType === 'meeting' ? (
                     <span
                       className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200/80 shadow-2xs flex-shrink-0"
                       title="Reunión / Meeting"
@@ -174,43 +181,52 @@ export const BoardRow: React.FC<BoardRowProps> = ({
                     </span>
                   )}
 
-                  <span
-                    className={`truncate text-xs sm:text-sm font-medium leading-tight ${
-                      item.completed
-                        ? 'line-through text-zinc-400'
-                        : 'text-zinc-900'
-                    }`}
-                    title={item.title}
-                  >
-                    {item.title}
-                  </span>
-                </div>
-
-                {/* Subtask / Renglones toggle indicator */}
-                <div className="flex items-center gap-2 mt-1">
-                  <button
-                    type="button"
-                    onClick={() => onToggleExpand(item.id)}
-                    className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-800 transition-colors focus:outline-none"
-                  >
-                    {item.isExpanded ? (
-                      <ChevronDown className="w-3 h-3 text-zinc-500" />
-                    ) : (
-                      <ChevronRight className="w-3 h-3 text-zinc-400" />
-                    )}
-                    <span>
-                      {subtasksCount > 0
-                        ? `Renglones (${completedSubtasksCount}/${subtasksCount})`
-                        : '+ Renglones'}
-                    </span>
-                  </button>
-
-                  {item.notes && !item.isExpanded && (
-                    <span className="text-[11px] text-zinc-400 truncate max-w-[140px] italic">
-                      • {item.notes}
+                  {isProject ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpenProject(item.id)}
+                      title="Abrir proyecto y sus notas"
+                      className={`truncate text-left text-xs sm:text-sm font-medium leading-tight hover:underline underline-offset-2 cursor-pointer focus:outline-none focus-visible:underline ${
+                        item.completed ? 'line-through text-zinc-400' : 'text-zinc-900'
+                      }`}
+                    >
+                      {item.title}
+                    </button>
+                  ) : (
+                    <span
+                      className={`truncate text-xs sm:text-sm font-medium leading-tight ${
+                        item.completed
+                          ? 'line-through text-zinc-400'
+                          : 'text-zinc-900'
+                      }`}
+                      title={item.title}
+                    >
+                      {item.title}
                     </span>
                   )}
                 </div>
+
+                {/* Proyecto: resumen de notas. Acción/Meeting: nota corta si existe */}
+                {isProject ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenProject(item.id)}
+                    className="flex items-center gap-1.5 mt-1 text-[11px] text-zinc-500 hover:text-zinc-800 transition-colors focus:outline-none cursor-pointer"
+                  >
+                    <span>{projectSummary}</span>
+                    {nextNoteDeadline && (
+                      <span className={hasOverdueNote ? 'text-rose-600 font-medium' : 'text-zinc-400'}>
+                        • {hasOverdueNote ? 'vencida' : 'próxima'} {formatDisplayDate(nextNoteDeadline)}
+                      </span>
+                    )}
+                  </button>
+                ) : (
+                  item.notes && (
+                    <p className="mt-1 text-[11px] text-zinc-400 truncate italic" title={item.notes}>
+                      {item.notes}
+                    </p>
+                  )
+                )}
               </div>
             </div>
           </div>
@@ -333,7 +349,14 @@ export const BoardRow: React.FC<BoardRowProps> = ({
 
           {/* COLUMNA 4 (~21% ancho / 2 cols out of 12): Fecha Límite + Acciones */}
           <div className="col-span-12 md:col-span-2 flex items-center justify-between gap-2 min-w-0">
-            {isEditingDate ? (
+            {isProject ? (
+              <div
+                className="text-xs text-zinc-400 font-mono whitespace-nowrap"
+                title="Los proyectos no tienen fecha límite; las fechas van en sus notas"
+              >
+                Sin fecha
+              </div>
+            ) : isEditingDate ? (
               <input
                 type="date"
                 autoFocus
@@ -380,20 +403,6 @@ export const BoardRow: React.FC<BoardRowProps> = ({
           </div>
         </div>
       </div>
-
-      {/* EXPANDABLE SUBTASKS / RENGLONES */}
-      {item.isExpanded && (
-        <div className="px-4 sm:px-6 pb-3.5 pt-0 ml-8 sm:ml-12">
-          <SubtaskLines
-            subtasks={item.subtasks || []}
-            notes={item.notes}
-            onToggleSubtask={(subId) => onToggleSubtask(item.id, subId)}
-            onAddSubtask={(text) => onAddSubtask(item.id, text)}
-            onDeleteSubtask={(subId) => onDeleteSubtask(item.id, subId)}
-            onUpdateNotes={(newNotes) => onUpdateNotes(item.id, newNotes)}
-          />
-        </div>
-      )}
     </div>
   );
 };

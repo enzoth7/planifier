@@ -39,11 +39,7 @@ export const EnzoWorkspace: React.FC<WorkspaceProps> = ({
   onUpdateTarget,
   onUpdateTargetAndColor,
   onUpdateDeadline,
-  onToggleExpand,
-  onToggleSubtask,
-  onAddSubtask,
-  onDeleteSubtask,
-  onUpdateNotes,
+  onUpdateAction,
 }) => {
   // Gestión independiente de pestañas / subpáginas de Enzo
   const [activeTab, setActiveTab] = useState<TabType>('board');
@@ -137,11 +133,7 @@ export const EnzoWorkspace: React.FC<WorkspaceProps> = ({
           onUpdateTarget={onUpdateTarget}
           onUpdateTargetAndColor={onUpdateTargetAndColor}
           onUpdateDeadline={onUpdateDeadline}
-          onToggleExpand={onToggleExpand || (() => {})}
-          onToggleSubtask={onToggleSubtask || (() => {})}
-          onAddSubtask={onAddSubtask || (() => {})}
-          onDeleteSubtask={onDeleteSubtask || (() => {})}
-          onUpdateNotes={onUpdateNotes || (() => {})}
+          onUpdateAction={onUpdateAction}
           onNavigateToClients={() => setActiveTab('clients')}
           onOpenCreateModal={() => onOpenCreateModal()}
           onQuickAdd={handleQuickAdd}

@@ -24,14 +24,50 @@ import {
   RotateCcw,
   Check,
   Video,
+  FolderOpen,
 } from 'lucide-react';
 import { ActionItem, ClientItem, VintageColorKey, VINTAGE_COLORS, TaskType, UserProfile, WorkspaceMode, APP_USERS } from '../types';
 import { BoardRow } from './BoardRow';
 import { EmptyState } from './EmptyState';
 import { ClientAutocomplete } from './ClientAutocomplete';
+import { ProjectDialog } from './ProjectDialog';
 
 type SortKey = 'manual' | 'title' | 'value' | 'deadline' | 'client';
 type SortDirection = 'asc' | 'desc';
+
+const QuickTypeToggle: React.FC<{ value: TaskType; onChange: (type: TaskType) => void }> = ({ value, onChange }) => (
+  <div className="flex items-center p-0.5 bg-zinc-100 rounded-md border border-zinc-200/70 text-[10px] flex-shrink-0">
+    <button
+      type="button"
+      onClick={() => onChange('action')}
+      className={`px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+        value === 'action' ? 'bg-white text-zinc-900 shadow-2xs font-semibold' : 'text-zinc-500 hover:text-zinc-800'
+      }`}
+    >
+      Acción
+    </button>
+    <button
+      type="button"
+      onClick={() => onChange('meeting')}
+      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+        value === 'meeting' ? 'bg-purple-100 text-purple-900 shadow-2xs font-semibold' : 'text-zinc-500 hover:text-zinc-800'
+      }`}
+    >
+      <Video className="w-2.5 h-2.5" />
+      <span>Meeting</span>
+    </button>
+    <button
+      type="button"
+      onClick={() => onChange('project')}
+      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
+        value === 'project' ? 'bg-sky-100 text-sky-900 shadow-2xs font-semibold' : 'text-zinc-500 hover:text-zinc-800'
+      }`}
+    >
+      <FolderOpen className="w-2.5 h-2.5" />
+      <span>Proyecto</span>
+    </button>
+  </div>
+);
 
 interface BoardTableProps {
   items: ActionItem[];
@@ -47,11 +83,7 @@ interface BoardTableProps {
   onUpdateTarget?: (id: string, target: string) => void;
   onUpdateTargetAndColor?: (id: string, target: string, color: VintageColorKey) => void;
   onUpdateDeadline?: (id: string, deadline: string) => void;
-  onToggleExpand: (id: string) => void;
-  onToggleSubtask: (itemId: string, subtaskId: string) => void;
-  onAddSubtask: (itemId: string, text: string) => void;
-  onDeleteSubtask: (itemId: string, subtaskId: string) => void;
-  onUpdateNotes: (itemId: string, notes: string) => void;
+  onUpdateAction: (action: ActionItem) => void;
   onOpenCreateModal: () => void;
   onNavigateToClients?: () => void;
   onQuickAdd: (data: {
@@ -80,11 +112,7 @@ export const BoardTable: React.FC<BoardTableProps> = ({
   onUpdateTarget,
   onUpdateTargetAndColor,
   onUpdateDeadline,
-  onToggleExpand,
-  onToggleSubtask,
-  onAddSubtask,
-  onDeleteSubtask,
-  onUpdateNotes,
+  onUpdateAction,
   onOpenCreateModal,
   onNavigateToClients,
   onQuickAdd,
@@ -108,6 +136,12 @@ export const BoardTable: React.FC<BoardTableProps> = ({
   const [quickTaskType, setQuickTaskType] = useState<TaskType>('action');
   const [quickUserEmail, setQuickUserEmail] = useState<string>(currentUser?.email || 'enzothome1@gmail.com');
   const [isQuickAddExpanded, setIsQuickAddExpanded] = useState(false);
+
+  // Proyecto abierto en el diálogo de notas. Se guarda el id para que el diálogo
+  // siempre lea la versión más reciente del proyecto desde `items`.
+  const [openProjectId, setOpenProjectId] = useState<string | null>(null);
+  const openProject = openProjectId ? items.find((i) => i.id === openProjectId) || null : null;
+  const isQuickProject = quickTaskType === 'project';
 
   // Sincronizar usuario por defecto si cambia currentUser
   useEffect(() => {
@@ -295,9 +329,9 @@ export const BoardTable: React.FC<BoardTableProps> = ({
     e.preventDefault();
     if (!quickTitle.trim()) return;
 
-    // Default to today or tomorrow if no date specified
-    let d = quickDeadline;
-    if (!d) {
+    // Los proyectos no tienen fecha; el resto toma mañana si no se indicó una.
+    let d = isQuickProject ? '' : quickDeadline;
+    if (!d && !isQuickProject) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       d = tomorrow.toISOString().split('T')[0];
@@ -775,31 +809,7 @@ export const BoardTable: React.FC<BoardTableProps> = ({
               {/* Col 1: Acción / Descripción (col-span-12 md:col-span-4) */}
               <div className="col-span-12 md:col-span-4 flex items-center gap-2 min-w-0">
                 {/* Toggle Tipo: Acción vs Meeting */}
-                <div className="flex items-center p-0.5 bg-zinc-100 rounded-md border border-zinc-200/70 text-[10px] flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setQuickTaskType('action')}
-                    className={`px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
-                      quickTaskType === 'action'
-                        ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
-                        : 'text-zinc-500 hover:text-zinc-800'
-                    }`}
-                  >
-                    Acción
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuickTaskType('meeting')}
-                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
-                      quickTaskType === 'meeting'
-                        ? 'bg-purple-100 text-purple-900 shadow-2xs font-semibold'
-                        : 'text-zinc-500 hover:text-zinc-800'
-                    }`}
-                  >
-                    <Video className="w-2.5 h-2.5" />
-                    <span>Meeting</span>
-                  </button>
-                </div>
+                <QuickTypeToggle value={quickTaskType} onChange={setQuickTaskType} />
 
                 <input
                   type="text"
@@ -810,7 +820,7 @@ export const BoardTable: React.FC<BoardTableProps> = ({
                       setIsQuickAddExpanded(true);
                     }
                   }}
-                  placeholder="+ Nueva tarea de equipo para Polarist..."
+                  placeholder={isQuickProject ? '+ Título del nuevo proyecto de Polarist...' : '+ Nueva tarea de equipo para Polarist...'}
                   className="flex-1 min-w-0 bg-transparent text-zinc-900 placeholder:text-zinc-400 text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
                 />
               </div>
@@ -875,12 +885,18 @@ export const BoardTable: React.FC<BoardTableProps> = ({
 
               {/* Col 5: Fecha Límite + Botón Agregar (col-span-12 md:col-span-2) */}
               <div className={`col-span-12 md:col-span-2 flex items-center gap-2 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:flex'}`}>
-                <input
-                  type="date"
-                  value={quickDeadline}
-                  onChange={(e) => setQuickDeadline(e.target.value)}
-                  className="w-full bg-transparent text-zinc-700 font-mono text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
-                />
+                {isQuickProject ? (
+                  <span className="w-full px-2 py-1.5 text-xs sm:text-sm font-mono text-zinc-400" title="Las fechas van en las notas del proyecto">
+                    Sin fecha
+                  </span>
+                ) : (
+                  <input
+                    type="date"
+                    value={quickDeadline}
+                    onChange={(e) => setQuickDeadline(e.target.value)}
+                    className="w-full bg-transparent text-zinc-700 font-mono text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
+                  />
+                )}
                 {quickTitle.trim() && (
                   <button
                     type="submit"
@@ -895,31 +911,7 @@ export const BoardTable: React.FC<BoardTableProps> = ({
             <>
               {/* Col 1: Acción / Descripción (col-span-12 md:col-span-5) */}
               <div className="col-span-12 md:col-span-5 flex items-center gap-2">
-                <div className="flex items-center p-0.5 bg-zinc-100 rounded-md border border-zinc-200/70 text-[10px] flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setQuickTaskType('action')}
-                    className={`px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
-                      quickTaskType === 'action'
-                        ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
-                        : 'text-zinc-500 hover:text-zinc-800'
-                    }`}
-                  >
-                    Acción
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuickTaskType('meeting')}
-                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded font-medium transition-colors cursor-pointer ${
-                      quickTaskType === 'meeting'
-                        ? 'bg-purple-100 text-purple-900 shadow-2xs font-semibold'
-                        : 'text-zinc-500 hover:text-zinc-800'
-                    }`}
-                  >
-                    <Video className="w-2.5 h-2.5" />
-                    <span>Meeting</span>
-                  </button>
-                </div>
+                <QuickTypeToggle value={quickTaskType} onChange={setQuickTaskType} />
 
                 <input
                   type="text"
@@ -931,7 +923,9 @@ export const BoardTable: React.FC<BoardTableProps> = ({
                     }
                   }}
                   placeholder={
-                    selectedClientFilter
+                    isQuickProject
+                      ? '+ Título del nuevo proyecto y presionar Enter...'
+                      : selectedClientFilter
                       ? `+ Escribir nueva acción para ${selectedClientFilter}...`
                       : '+ Escribir nueva acción y presionar Enter...'
                   }
@@ -974,12 +968,18 @@ export const BoardTable: React.FC<BoardTableProps> = ({
 
               {/* Col 4: Fecha Límite + Botón Agregar (col-span-3 md:col-span-2) */}
               <div className={`col-span-3 md:col-span-2 flex items-center gap-2 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:flex'}`}>
-                <input
-                  type="date"
-                  value={quickDeadline}
-                  onChange={(e) => setQuickDeadline(e.target.value)}
-                  className="w-full bg-transparent text-zinc-700 font-mono text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
-                />
+                {isQuickProject ? (
+                  <span className="w-full px-2 py-1.5 text-xs sm:text-sm font-mono text-zinc-400" title="Las fechas van en las notas del proyecto">
+                    Sin fecha
+                  </span>
+                ) : (
+                  <input
+                    type="date"
+                    value={quickDeadline}
+                    onChange={(e) => setQuickDeadline(e.target.value)}
+                    className="w-full bg-transparent text-zinc-700 font-mono text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
+                  />
+                )}
                 {quickTitle.trim() && (
                   <button
                     type="submit"
@@ -1044,11 +1044,7 @@ export const BoardTable: React.FC<BoardTableProps> = ({
                     onUpdateTarget={onUpdateTarget}
                     onUpdateTargetAndColor={onUpdateTargetAndColor}
                     onUpdateDeadline={onUpdateDeadline}
-                    onToggleExpand={onToggleExpand}
-                    onToggleSubtask={onToggleSubtask}
-                    onAddSubtask={onAddSubtask}
-                    onDeleteSubtask={onDeleteSubtask}
-                    onUpdateNotes={onUpdateNotes}
+                    onOpenProject={setOpenProjectId}
                     onNavigateToClients={onNavigateToClients}
                     onUpdateUserEmail={onUpdateUserEmail}
                   />
@@ -1058,6 +1054,12 @@ export const BoardTable: React.FC<BoardTableProps> = ({
           </SortableContext>
         </DndContext>
       )}
+
+      <ProjectDialog
+        project={openProject}
+        onClose={() => setOpenProjectId(null)}
+        onUpdate={onUpdateAction}
+      />
     </div>
   );
 };

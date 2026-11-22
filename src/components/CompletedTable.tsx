@@ -7,9 +7,10 @@ import {
   Check,
   Archive,
   Video,
+  FolderOpen,
 } from 'lucide-react';
 import { ActionItem, VINTAGE_COLORS, WorkspaceMode, getUserByEmail } from '../types';
-import { formatCompletedDate } from '../utils/dates';
+import { formatCompletedDate, formatDisplayDate } from '../utils/dates';
 
 interface CompletedTableProps {
   items: ActionItem[];
@@ -82,7 +83,10 @@ export const CompletedTable: React.FC<CompletedTableProps> = ({
           {items.map((item) => {
             const colorDef = VINTAGE_COLORS[item.tagColor] || VINTAGE_COLORS.emerald;
             const isExpanded = !!expandedIds[item.id];
-            const subtasksCount = item.subtasks ? item.subtasks.length : 0;
+            // Solo los proyectos tienen notas en lista; los renglones de acciones viejas ya no se muestran.
+            const isProject = item.taskType === 'project';
+            const projectNotes = isProject ? item.subtasks || [] : [];
+            const subtasksCount = projectNotes.length;
             const completedDateStr = formatCompletedDate(item.completedAt);
             const user = getUserByEmail(item.userEmail);
 
@@ -112,6 +116,12 @@ export const CompletedTable: React.FC<CompletedTableProps> = ({
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
+                            {isProject && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium bg-sky-50 text-sky-700 border border-sky-200/80 flex-shrink-0">
+                                <FolderOpen className="w-2.5 h-2.5 text-sky-600" />
+                                Proyecto
+                              </span>
+                            )}
                             {item.taskType === 'meeting' && (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200/80 flex-shrink-0">
                                 <Video className="w-2.5 h-2.5 text-amber-600" />
@@ -141,7 +151,7 @@ export const CompletedTable: React.FC<CompletedTableProps> = ({
                               )}
                               <span>
                                 {subtasksCount > 0
-                                  ? `Renglones (${subtasksCount})`
+                                  ? `Notas (${projectNotes.filter((n) => n.done).length}/${subtasksCount})`
                                   : 'Notas'}
                               </span>
                             </button>
@@ -238,17 +248,26 @@ export const CompletedTable: React.FC<CompletedTableProps> = ({
                     )}
                     {subtasksCount > 0 && (
                       <div className="space-y-1.5 my-2">
-                        {item.subtasks.map((st) => (
+                        {projectNotes.map((st) => (
                           <div
                             key={st.id}
                             className="flex items-center gap-2 text-xs text-zinc-600"
                           >
-                            <span className="w-3 h-3 rounded-full border border-emerald-500 bg-emerald-50 flex items-center justify-center text-emerald-600">
+                            <span
+                              className={`w-3 h-3 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                                st.done
+                                  ? 'border-emerald-500 bg-emerald-50 text-emerald-600'
+                                  : 'border-zinc-300 bg-white text-transparent'
+                              }`}
+                            >
                               <Check className="w-2 h-2 stroke-[3]" />
                             </span>
                             <span className={st.done ? 'line-through text-zinc-400' : ''}>
                               {st.text}
                             </span>
+                            {st.deadline && (
+                              <span className="font-mono text-[10px] text-zinc-400">{formatDisplayDate(st.deadline)}</span>
+                            )}
                           </div>
                         ))}
                       </div>

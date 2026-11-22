@@ -37,11 +37,6 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
   onUpdateTarget,
   onUpdateTargetAndColor,
   onUpdateDeadline,
-  onToggleExpand,
-  onToggleSubtask,
-  onAddSubtask,
-  onDeleteSubtask,
-  onUpdateNotes,
   onUpdateUserEmail,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('board');
@@ -190,11 +185,7 @@ export const PolaristWorkspace: React.FC<WorkspaceProps> = ({
           onUpdateTarget={handleUpdateTarget}
           onUpdateTargetAndColor={handleUpdateTargetAndColor}
           onUpdateDeadline={onUpdateDeadline}
-          onToggleExpand={onToggleExpand || (() => {})}
-          onToggleSubtask={onToggleSubtask || (() => {})}
-          onAddSubtask={onAddSubtask || (() => {})}
-          onDeleteSubtask={onDeleteSubtask || (() => {})}
-          onUpdateNotes={onUpdateNotes || (() => {})}
+          onUpdateAction={onUpdateAction}
           onNavigateToClients={() => setActiveTab('clients')}
           onOpenCreateModal={() => onOpenCreateModal()}
           onQuickAdd={handleQuickAdd}

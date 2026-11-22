@@ -140,7 +140,7 @@ export const APP_USERS: UserProfile[] = [
   { id: 'juli', name: 'Juli', email: 'juliperez2803@gmail.com', avatarColor: '#9333ea', initials: 'JP', endpoint: 'julieta' },
 ];
 
-export type TaskType = 'action' | 'meeting';
+export type TaskType = 'action' | 'meeting' | 'project';
 export type WorkspaceMode = 'personal' | 'team';
 export type ClientOwner = 'enzo' | 'cristian' | 'juli' | 'polarist';
 
@@ -150,10 +150,15 @@ export const getUserByEmail = (email?: string): UserProfile => {
   return found || APP_USERS[0];
 };
 
+/**
+ * Item de la columna `subtasks` (jsonb). En los proyectos funciona como una
+ * nota de planificación; `deadline` (YYYY-MM-DD) es opcional.
+ */
 export interface SubtaskItem {
   id: string;
   text: string;
   done: boolean;
+  deadline?: string;
 }
 
 export interface ActionItem {
