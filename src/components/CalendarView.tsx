@@ -8,7 +8,7 @@ import {
   ChevronDown,
   Sparkles,
 } from 'lucide-react';
-import { ActionItem, ClientItem, WorkspaceMode, APP_USERS } from '../types';
+import { ActionItem, ClientItem } from '../types';
 import {
   getMondayOfWeek,
   addDays,
@@ -22,9 +22,6 @@ import { CalendarActionCard } from './CalendarActionCard';
 interface CalendarViewProps {
   items: ActionItem[];
   clients?: ClientItem[];
-  workspaceMode?: WorkspaceMode;
-  selectedTeamMemberEmail?: string | null;
-  onSelectTeamMember?: (email: string | null) => void;
   onToggleComplete: (id: string) => void;
   onEdit: (item: ActionItem) => void;
   onUpdateDeadline: (id: string, deadline: string) => void;
@@ -44,9 +41,6 @@ const WEEK_DAYS = [
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
   items,
-  workspaceMode = 'personal',
-  selectedTeamMemberEmail,
-  onSelectTeamMember,
   onToggleComplete,
   onEdit,
   onUpdateDeadline,
@@ -235,45 +229,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
         </div>
 
-        {/* Acciones del lado derecho: Filtro de miembros (en modo Team) + Total visible & Botón sin fecha */}
+        {/* Acciones del lado derecho: Total visible & Botón sin fecha */}
         <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 text-xs">
-          {workspaceMode === 'team' && onSelectTeamMember && (
-            <div className="flex items-center gap-1 p-0.5 bg-zinc-100/90 rounded-lg border border-zinc-200/60 text-xs mr-1">
-              <button
-                type="button"
-                onClick={() => onSelectTeamMember(null)}
-                className={`px-2 py-0.5 rounded font-medium transition-all cursor-pointer ${
-                  selectedTeamMemberEmail === null
-                    ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
-                    : 'text-zinc-500 hover:text-zinc-800'
-                }`}
-              >
-                Todos
-              </button>
-              {APP_USERS.map((user) => {
-                const isSelected = selectedTeamMemberEmail === user.email;
-                return (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => onSelectTeamMember(user.email)}
-                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
-                        : 'text-zinc-500 hover:text-zinc-800'
-                    }`}
-                  >
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: user.avatarColor }}
-                    />
-                    <span>{user.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100/70 text-zinc-600 font-mono">
             <Sparkles className="w-3 h-3 text-amber-600" />
             <span>{visibleActiveCount} acciones</span>
@@ -334,7 +291,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <div key={item.id} className="w-[180px] sm:w-[210px] flex-shrink-0">
                 <CalendarActionCard
                   item={item}
-                  workspaceMode={workspaceMode}
                   onToggleComplete={onToggleComplete}
                   onEdit={onEdit}
                 />
@@ -436,7 +392,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         <CalendarActionCard
                           key={action.id}
                           item={action}
-                          workspaceMode={workspaceMode}
                           onToggleComplete={onToggleComplete}
                           onEdit={onEdit}
                         />

@@ -32,9 +32,7 @@ export const INITIAL_ACTIONS: ActionItem[] = [
       { id: 'sub-2', text: 'Confirmar recepción del comprobante de anticipo', done: false },
       { id: 'sub-3', text: 'Configurar canal prioritario y credenciales', done: false },
     ],
-    isExpanded: true,
     createdAt: '2026-09-15T09:00:00Z',
-    userEmail: 'enzothome1@gmail.com',
     taskType: 'action',
   },
   {
@@ -53,9 +51,7 @@ export const INITIAL_ACTIONS: ActionItem[] = [
       { id: 'sub-5', text: 'Provisionar instancias con volumen NVMe', done: true },
       { id: 'sub-6', text: 'Test de carga con 500 ejecuciones simultáneas', done: false },
     ],
-    isExpanded: false,
     createdAt: '2026-09-14T14:30:00Z',
-    userEmail: 'enzothome1@gmail.com',
     taskType: 'action',
   },
   {
@@ -68,14 +64,12 @@ export const INITIAL_ACTIONS: ActionItem[] = [
     currency: '$',
     deadline: '2026-09-22',
     completed: false,
-    notes: 'Alineación de objetivos de expansión y sprints con Cristian y Julieta.',
+    notes: 'Alineación de objetivos de expansión y próximos sprints.',
     subtasks: [
       { id: 'sub-7', text: 'Preparar métricas de conversión y MRR', done: true },
       { id: 'sub-8', text: 'Presentar nuevas funcionalidades de automatización', done: false },
     ],
-    isExpanded: false,
     createdAt: '2026-09-16T11:00:00Z',
-    userEmail: 'cristianpayret@gmail.com',
     taskType: 'meeting',
   },
   {
@@ -93,9 +87,7 @@ export const INITIAL_ACTIONS: ActionItem[] = [
       { id: 'sub-9', text: 'Revisión con escribanía en Montevideo', done: false },
       { id: 'sub-10', text: 'Actualizar plantilla NDA para proveedores externos', done: false },
     ],
-    isExpanded: false,
     createdAt: '2026-09-13T16:00:00Z',
-    userEmail: 'juliperez2803@gmail.com',
     taskType: 'action',
   },
   {
@@ -113,9 +105,7 @@ export const INITIAL_ACTIONS: ActionItem[] = [
       { id: 'sub-11', text: 'Benchmark con Cohere vs Voyage AI', done: true },
       { id: 'sub-12', text: 'Integración en endpoint FastAPI', done: true },
     ],
-    isExpanded: false,
     createdAt: '2026-09-12T10:00:00Z',
-    userEmail: 'enzothome1@gmail.com',
     taskType: 'action',
   },
   {
@@ -134,9 +124,7 @@ export const INITIAL_ACTIONS: ActionItem[] = [
       { id: 'sub-13', text: 'Descarga de extractos y comprobantes', done: true },
       { id: 'sub-14', text: 'Envío a estudio contable', done: true },
     ],
-    isExpanded: false,
     createdAt: '2026-09-10T12:00:00Z',
-    userEmail: 'enzothome1@gmail.com',
     taskType: 'action',
   }
 ];
@@ -224,9 +212,7 @@ export function importBoardFromJSON(
         completedAt: item.completedAt,
         notes: item.notes || '',
         subtasks: Array.isArray(item.subtasks) ? item.subtasks : [],
-        isExpanded: Boolean(item.isExpanded),
         createdAt: item.createdAt || new Date().toISOString(),
-        userEmail: item.userEmail || 'enzothome1@gmail.com',
         taskType: item.taskType || 'action',
       }));
 

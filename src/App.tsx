@@ -1,147 +1,58 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActionItem,
   ClientItem,
   ClientType,
-  ClientOwner,
   VintageColorKey,
-  UserProfile,
-  APP_USERS,
-  WorkspaceMode,
   TaskType,
-  AppEndpoint,
-  ObjectiveItem,
 } from './types';
 import { loadStoredActions, saveStoredActions, loadStoredClients, saveStoredClients } from './utils/storage';
 import { actionsService } from './services/actionsService';
 import { preferencesService, UserPreferences } from './services/preferencesService';
-import { getInitialEndpoint, navigateEndpoint, subscribeToEndpointChange } from './utils/router';
 import { soundFx } from './utils/sound';
 import { fireCraftsmanCelebration } from './utils/confetti';
-import {
-  EnzoWorkspace,
-  CristianWorkspace,
-  JulietaWorkspace,
-  PolaristWorkspace,
-  WorkspaceProps,
-} from './workspaces';
+import { EnzoWorkspace } from './workspaces/EnzoWorkspace';
+import { WorkspaceProps } from './workspaces/types';
 import { ActionModal } from './components/ActionModal';
 import { ClientModal } from './components/ClientModal';
-import { LoginScreen } from './components/LoginScreen';
 import { Loader2 } from 'lucide-react';
-import { INITIAL_OBJECTIVES } from './data/objectives';
-import {
-  ensurePolaristTeamClient,
-  getPersonalClientsWithPolarist,
-  isPolaristTeamClient,
-} from './utils/clients';
+import { ensurePolaristTeamClient, isPolaristTeamClient } from './utils/clients';
+
+// App de un solo usuario: las preferencias (fondo, opacidad) se guardan bajo este email.
+const OWNER_EMAIL = 'enzothome1@gmail.com';
+
+const isVisibleClient = (client: ClientItem) =>
+  (client.owner || 'enzo') === 'enzo' || isPolaristTeamClient(client);
 
 export const App: React.FC = () => {
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [completedActions, setCompletedActions] = useState<ActionItem[]>([]);
   const [clients, setClients] = useState<ClientItem[]>([]);
-  const [objectives, setObjectives] = useState<ObjectiveItem[]>(INITIAL_OBJECTIVES);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Router / Endpoint State: 'enzo' | 'cristian' | 'julieta' | 'polarist'
-  const [currentEndpoint, setCurrentEndpoint] = useState<AppEndpoint>(() => getInitialEndpoint());
-
-  // Estado de sesión autenticada
-  const [authenticatedUser, setAuthenticatedUser] = useState<UserProfile | null>(() => {
-    const email = localStorage.getItem('planifier_auth_email') || localStorage.getItem('plannifier_auth_email');
-    if (email) localStorage.setItem('planifier_auth_email', email);
-    return APP_USERS.find((u) => u.email === email) || null;
-  });
-
-  // Usuario correspondiente al endpoint actual
-  const currentUser: UserProfile = useMemo(() => {
-    if (currentEndpoint === 'cristian') return APP_USERS[1];
-    if (currentEndpoint === 'julieta') return APP_USERS[2];
-    if (currentEndpoint === 'polarist') return authenticatedUser || APP_USERS[0];
-    return APP_USERS[0]; // 'enzo'
-  }, [currentEndpoint, authenticatedUser]);
-
-  const workspaceMode: WorkspaceMode = currentEndpoint === 'polarist' ? 'team' : 'personal';
-
-  // Suscripción al enrutador para cambios de URL en vivo y botones de historial
-  useEffect(() => {
-    const unsubscribe = subscribeToEndpointChange((newEp) => {
-      setCurrentEndpoint(newEp);
-    });
-    return unsubscribe;
-  }, []);
-
-  const handleNavigateEndpoint = (endpoint: AppEndpoint) => {
-    navigateEndpoint(endpoint);
-    setCurrentEndpoint(endpoint);
-  };
-
-  const handleLogin = (email: string) => {
-    const user = APP_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (!user) return;
-    localStorage.setItem('planifier_auth_email', user.email);
-    setAuthenticatedUser(user);
-    handleNavigateEndpoint(user.endpoint);
-    preferencesService.loadPreferences(user.email).then(setPreferences);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('planifier_auth_email');
-    setAuthenticatedUser(null);
-  };
-
-  // Escudo de Privacidad de Rutas:
-  // Un usuario autenticado solo tiene permitido acceder a:
-  // 1. Su propio endpoint personal (authenticatedUser.endpoint, ej: /enzo).
-  // 2. El espacio de equipo compartido (polarist, ej: /polarist).
-  useEffect(() => {
-    if (authenticatedUser) {
-      const allowed = [authenticatedUser.endpoint, 'polarist'];
-      if (!allowed.includes(currentEndpoint)) {
-        handleNavigateEndpoint(authenticatedUser.endpoint);
-      }
-    }
-  }, [authenticatedUser, currentEndpoint]);
-
-  // Preferencias de usuario aisladas (con fallback y sincronización Supabase)
-  const initialUserEmail = authenticatedUser?.email || APP_USERS[0].email;
+  // Preferencias de fondo (con fallback local y sincronización Supabase)
   const [preferences, setPreferences] = useState<UserPreferences>(() =>
-    preferencesService.getStoredPreferences(initialUserEmail)
+    preferencesService.getStoredPreferences(OWNER_EMAIL)
   );
 
-  // Sincronizar preferencias aisladas al cambiar el usuario activo
   useEffect(() => {
-    const targetEmail = authenticatedUser?.email || currentUser.email;
-    if (!targetEmail) return;
-
-    // Carga síncrona instantánea desde localStorage
-    const local = preferencesService.getStoredPreferences(targetEmail);
-    setPreferences(local);
-
-    // Consulta asíncrona a Supabase en segundo plano
     let isMounted = true;
-    preferencesService.loadPreferences(targetEmail).then((pref) => {
-      if (isMounted) {
-        setPreferences(pref);
-      }
+    preferencesService.loadPreferences(OWNER_EMAIL).then((pref) => {
+      if (isMounted) setPreferences(pref);
     });
-
     return () => {
       isMounted = false;
     };
-  }, [authenticatedUser?.email, currentUser.email]);
+  }, []);
 
-  // Selección de fondo y opacidad (guardado estricto por usuario)
   const handleSelectBg = (url: string) => {
-    const targetEmail = authenticatedUser?.email || currentUser.email;
     setPreferences((prev) => ({ ...prev, bgImage: url }));
-    preferencesService.savePreferences(targetEmail, { bgImage: url });
+    preferencesService.savePreferences(OWNER_EMAIL, { bgImage: url });
   };
 
   const handleSelectOpacity = (opacity: number) => {
-    const targetEmail = authenticatedUser?.email || currentUser.email;
     setPreferences((prev) => ({ ...prev, bgOpacity: opacity }));
-    preferencesService.savePreferences(targetEmail, { bgOpacity: opacity });
+    preferencesService.savePreferences(OWNER_EMAIL, { bgOpacity: opacity });
   };
 
   // Modal State for Actions
@@ -172,18 +83,10 @@ export const App: React.FC = () => {
           actionsService.fetchClients(),
         ]);
 
-        let objectivesData = INITIAL_OBJECTIVES;
-        try {
-          objectivesData = await actionsService.fetchObjectives();
-        } catch (objectiveError) {
-          console.warn('No se pudieron sincronizar los objetivos; se usa la copia importada.', objectiveError);
-        }
-
         if (isMounted) {
           setActions(activeData);
           setCompletedActions(completedData);
           setClients(clientsData);
-          setObjectives(objectivesData);
         }
       } catch (err) {
         console.error('Error cargando datos de Supabase, recurriendo a localStorage:', err);
@@ -191,7 +94,7 @@ export const App: React.FC = () => {
           const stored = loadStoredActions();
           setActions(stored.filter((a) => !a.completed));
           setCompletedActions(stored.filter((a) => a.completed));
-          setClients(ensurePolaristTeamClient(loadStoredClients()));
+          setClients(ensurePolaristTeamClient(loadStoredClients()).filter(isVisibleClient));
         }
       } finally {
         if (isMounted) {
@@ -214,20 +117,6 @@ export const App: React.FC = () => {
       saveStoredClients(clients);
     }
   }, [actions, completedActions, clients, isLoading]);
-
-  // Clientes filtrados según el workspace activo para su uso en modales
-  const activeWorkspaceClients = useMemo(() => {
-    if (currentEndpoint === 'polarist') {
-      return clients.filter((c) => c.owner === 'polarist');
-    }
-    if (currentEndpoint === 'cristian') {
-      return getPersonalClientsWithPolarist(clients, 'cristian');
-    }
-    if (currentEndpoint === 'julieta') {
-      return getPersonalClientsWithPolarist(clients, 'juli');
-    }
-    return clients.filter((c) => (c.owner || 'enzo') === 'enzo' || isPolaristTeamClient(c));
-  }, [clients, currentEndpoint]);
 
   // Handlers para Acciones
   const handleReorder = (newFilteredItems: ActionItem[]) => {
@@ -325,116 +214,29 @@ export const App: React.FC = () => {
     });
   };
 
+  // Aplica un cambio a una acción activa y lo persiste.
+  const patchAction = (id: string, patch: Partial<ActionItem>) => {
+    setActions((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const updated = { ...item, ...patch };
+        actionsService.updateAction(updated).catch(console.error);
+        return updated;
+      })
+    );
+  };
+
   const handleUpdateAction = (action: ActionItem) => {
-    const updated: ActionItem = {
-      ...action,
-      workspaceScope: currentEndpoint === 'polarist' ? 'polarist' : (action.workspaceScope || 'personal'),
-    };
-    setActions((prev) => prev.map((a) => (a.id === action.id ? updated : a)));
-    actionsService.updateAction(updated).catch(console.error);
+    setActions((prev) => prev.map((a) => (a.id === action.id ? action : a)));
+    actionsService.updateAction(action).catch(console.error);
   };
 
-  const handleUpdateObjective = (objective: ObjectiveItem) => {
-    const previous = objectives.find((item) => item.id === objective.id);
-    setObjectives((current) =>
-      current.map((item) => (item.id === objective.id ? objective : item))
-    );
-    actionsService.updateObjective(objective).catch((error) => {
-      console.error('Error al guardar el objetivo:', error);
-      if (previous) {
-        setObjectives((current) =>
-          current.map((item) => (item.id === previous.id ? previous : item))
-        );
-      }
-    });
-  };
-
-  const handleUpdateColor = (id: string, color: VintageColorKey) => {
-    setActions((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const updated = { ...item, tagColor: color };
-          actionsService.updateAction(updated).catch(console.error);
-          return updated;
-        }
-        return item;
-      })
-    );
-  };
-
-  const handleUpdateValue = (id: string, val: number) => {
-    setActions((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const updated = { ...item, value: val };
-          actionsService.updateAction(updated).catch(console.error);
-          return updated;
-        }
-        return item;
-      })
-    );
-  };
-
-  const handleUpdateTarget = (id: string, target: string) => {
-    setActions((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const updated: ActionItem = {
-            ...item,
-            target,
-            workspaceScope: currentEndpoint === 'polarist' ? 'polarist' : (item.workspaceScope || 'personal'),
-          };
-          actionsService.updateAction(updated).catch(console.error);
-          return updated;
-        }
-        return item;
-      })
-    );
-  };
-
-  const handleUpdateTargetAndColor = (id: string, target: string, color: VintageColorKey) => {
-    setActions((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const updated: ActionItem = {
-            ...item,
-            target,
-            tagColor: color,
-            workspaceScope: currentEndpoint === 'polarist' ? 'polarist' : (item.workspaceScope || 'personal'),
-          };
-          actionsService.updateAction(updated).catch(console.error);
-          return updated;
-        }
-        return item;
-      })
-    );
-  };
-
-  const handleUpdateDeadline = (id: string, deadline: string) => {
-    setActions((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const updated = { ...item, deadline };
-          actionsService.updateAction(updated).catch(console.error);
-          return updated;
-        }
-        return item;
-      })
-    );
-  };
-
-  const handleUpdateUserEmail = (id: string, userEmail: string) => {
-    setActions((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const updated = { ...item, userEmail };
-          actionsService.updateAction(updated).catch(console.error);
-          return updated;
-        }
-        return item;
-      })
-    );
-  };
+  const handleUpdateColor = (id: string, color: VintageColorKey) => patchAction(id, { tagColor: color });
+  const handleUpdateValue = (id: string, val: number) => patchAction(id, { value: val });
+  const handleUpdateTarget = (id: string, target: string) => patchAction(id, { target });
+  const handleUpdateTargetAndColor = (id: string, target: string, color: VintageColorKey) =>
+    patchAction(id, { target, tagColor: color });
+  const handleUpdateDeadline = (id: string, deadline: string) => patchAction(id, { deadline });
 
   // Handlers para Clientes
   const handleAddClient = (clientData: {
@@ -443,22 +245,13 @@ export const App: React.FC = () => {
     color: VintageColorKey;
     country?: string;
   }) => {
-    const owner: ClientOwner =
-      currentEndpoint === 'polarist'
-        ? 'polarist'
-        : currentEndpoint === 'cristian'
-        ? 'cristian'
-        : currentEndpoint === 'julieta'
-        ? 'juli'
-        : 'enzo';
-
     const newClient: ClientItem = {
       id: `client-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       name: clientData.name,
       type: clientData.type,
       color: clientData.color,
       country: clientData.country || 'Uruguay',
-      owner,
+      owner: 'enzo',
       createdAt: new Date().toISOString(),
     };
     setClients((prev) => [...prev, newClient]);
@@ -468,18 +261,9 @@ export const App: React.FC = () => {
   const handleUpdateClient = (client: ClientItem) => {
     const existingClient = clients.find((item) => item.id === client.id);
     const protectedClient = existingClient && isPolaristTeamClient(existingClient);
-    const owner: ClientOwner =
-      (protectedClient ? 'polarist' : client.owner) ||
-      (currentEndpoint === 'polarist'
-        ? 'polarist'
-        : currentEndpoint === 'cristian'
-        ? 'cristian'
-        : currentEndpoint === 'julieta'
-        ? 'juli'
-        : 'enzo');
     const updatedClient: ClientItem = protectedClient
       ? { ...client, name: 'Polarist', owner: 'polarist', isSystem: true }
-      : { ...client, owner };
+      : { ...client, owner: client.owner || 'enzo' };
     setClients((prev) => prev.map((c) => (c.id === client.id ? updatedClient : c)));
     actionsService.updateClient(updatedClient).catch(console.error);
   };
@@ -520,129 +304,62 @@ export const App: React.FC = () => {
     setEditingClient(null);
   };
 
-  const handleQuickAdd = (data: {
+  // Crea una acción nueva al principio del tablero y la persiste.
+  const createAction = (data: {
     title: string;
-    target: string;
+    target?: string;
     tagColor?: VintageColorKey;
-    value: number;
-    deadline: string;
+    value?: number;
+    deadline?: string;
+    notes?: string;
+    subtasks?: ActionItem['subtasks'];
     taskType?: TaskType;
-    userEmail?: string;
   }) => {
-    const isPolarist = currentEndpoint === 'polarist';
-    const workspaceScope = isPolarist ? ('polarist' as const) : ('personal' as const);
-    const defaultTarget = isPolarist
-      ? (activeWorkspaceClients[0]?.name || 'Polarist Enterprise')
-      : (activeWorkspaceClients[0]?.name || 'General');
-
-    const targetToUse = data.target?.trim() || defaultTarget;
-    const clientMatch = activeWorkspaceClients.find(
-      (c) => c.name.toLowerCase() === targetToUse.toLowerCase()
-    );
-    const resolvedColor = data.tagColor || clientMatch?.color || 'emerald';
+    const targetToUse = data.target?.trim() || clients[0]?.name || 'General';
+    const clientMatch = clients.find((c) => c.name.toLowerCase() === targetToUse.toLowerCase());
 
     const newItem: ActionItem = {
       id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       order: 0,
       title: data.title,
       target: targetToUse,
-      tagColor: resolvedColor,
+      tagColor: data.tagColor || clientMatch?.color || 'emerald',
       value: data.value || 0,
       currency: '$',
       deadline: data.deadline || '',
       completed: false,
-      notes: '',
-      subtasks: [],
-      isExpanded: false,
+      notes: data.notes || '',
+      subtasks: data.subtasks || [],
       createdAt: new Date().toISOString(),
       taskType: data.taskType || 'action',
-      userEmail: data.userEmail || currentUser.email,
-      workspaceScope,
     };
 
     const updated = [newItem, ...actions].map((item, idx) => ({ ...item, order: idx }));
     setActions(updated);
 
-    actionsService.createAction(newItem)
+    actionsService
+      .createAction(newItem)
       .then(() => actionsService.reorderActions(updated))
       .catch(console.error);
   };
 
   const handleSaveModalItem = (itemData: Partial<ActionItem>) => {
     if (editingItem) {
-      const isPolarist = currentEndpoint === 'polarist';
-      const updatedItem: ActionItem = {
-        ...editingItem,
-        ...itemData,
-        workspaceScope: isPolarist ? 'polarist' : (editingItem.workspaceScope || 'personal'),
-      };
-      setActions((prev) =>
-        prev.map((item) => (item.id === editingItem.id ? updatedItem : item))
-      );
+      const updatedItem: ActionItem = { ...editingItem, ...itemData };
+      setActions((prev) => prev.map((item) => (item.id === editingItem.id ? updatedItem : item)));
       actionsService.updateAction(updatedItem).catch(console.error);
     } else {
-      const isPolarist = currentEndpoint === 'polarist';
-      const workspaceScope = isPolarist ? ('polarist' as const) : ('personal' as const);
-      const defaultTarget = isPolarist
-        ? (activeWorkspaceClients[0]?.name || 'Polarist Enterprise')
-        : (activeWorkspaceClients[0]?.name || 'General');
-
-      const newItem: ActionItem = {
-        id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        order: 0,
-        title: itemData.title || 'Nueva Acción',
-        target: itemData.target || defaultTarget,
-        tagColor: itemData.tagColor || 'emerald',
-        value: itemData.value || 0,
-        currency: '$',
-        deadline: itemData.deadline || '',
-        completed: false,
-        notes: itemData.notes || '',
-        subtasks: itemData.subtasks || [],
-        isExpanded: false,
-        createdAt: new Date().toISOString(),
-        taskType: itemData.taskType || 'action',
-        userEmail: itemData.userEmail || currentUser.email,
-        workspaceScope,
-      };
-
-      const updated = [newItem, ...actions].map((item, idx) => ({ ...item, order: idx }));
-      setActions(updated);
-
-      actionsService.createAction(newItem)
-        .then(() => actionsService.reorderActions(updated))
-        .catch(console.error);
+      createAction({ ...itemData, title: itemData.title || 'Nueva Acción' });
     }
     setEditingItem(null);
   };
 
-  if (!authenticatedUser) {
-    return (
-      <LoginScreen
-        onLogin={handleLogin}
-        bgImage="/BgPolarist.png"
-        bgOpacity={preferences.bgOpacity}
-      />
-    );
-  }
-
-  // Polarist fuerza siempre su fondo corporativo BgPolarist.png.
-  // Los espacios personales utilizan el fondo configurado por cada usuario.
-  const activeBgImage = currentEndpoint === 'polarist' ? '/BgPolarist.png' : preferences.bgImage;
-  const activeBgOpacity = preferences.bgOpacity;
-
-  // Propiedades comunes y canalizadas para todos los workspaces
   const workspaceProps: WorkspaceProps = {
     actions,
     completedActions,
     clients,
-    objectives,
-    currentUser,
-    onNavigateEndpoint: handleNavigateEndpoint,
-    onLogout: handleLogout,
-    onAddAction: handleQuickAdd,
+    onAddAction: createAction,
     onUpdateAction: handleUpdateAction,
-    onUpdateObjective: handleUpdateObjective,
     onDeleteAction: handleDelete,
     onCompleteAction: handleToggleComplete,
     onRestoreAction: handleRestoreAction,
@@ -659,14 +376,13 @@ export const App: React.FC = () => {
     onEditAction: handleEdit,
     onSelectBg: handleSelectBg,
     onSelectOpacity: handleSelectOpacity,
-    bgImage: activeBgImage,
-    bgOpacity: activeBgOpacity,
+    bgImage: preferences.bgImage,
+    bgOpacity: preferences.bgOpacity,
     onUpdateColor: handleUpdateColor,
     onUpdateValue: handleUpdateValue,
     onUpdateTarget: handleUpdateTarget,
     onUpdateTargetAndColor: handleUpdateTargetAndColor,
     onUpdateDeadline: handleUpdateDeadline,
-    onUpdateUserEmail: handleUpdateUserEmail,
   };
 
   return (
@@ -674,12 +390,12 @@ export const App: React.FC = () => {
       {/* Fondo fotográfico con transición suave */}
       <div
         className="fixed inset-0 -z-20 bg-cover bg-center pointer-events-none transition-all duration-700 ease-out"
-        style={{ backgroundImage: `url('${activeBgImage}')` }}
+        style={{ backgroundImage: `url('${preferences.bgImage}')` }}
       />
       {/* Capa blanca suave para atenuación */}
       <div
         className="fixed inset-0 -z-10 bg-white pointer-events-none transition-all duration-700 ease-out"
-        style={{ opacity: activeBgOpacity / 100 }}
+        style={{ opacity: preferences.bgOpacity / 100 }}
       />
 
       <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 flex flex-col justify-between max-w-[96%] xl:max-w-[1550px] w-full mx-auto text-zinc-900">
@@ -690,20 +406,7 @@ export const App: React.FC = () => {
               <p className="text-xs text-zinc-500 font-mono">Sincronizando con Supabase...</p>
             </div>
           ) : (
-            <>
-              {currentEndpoint === 'enzo' && (
-                <EnzoWorkspace {...workspaceProps} />
-              )}
-              {currentEndpoint === 'cristian' && (
-                <CristianWorkspace {...workspaceProps} />
-              )}
-              {currentEndpoint === 'julieta' && (
-                <JulietaWorkspace {...workspaceProps} />
-              )}
-              {currentEndpoint === 'polarist' && (
-                <PolaristWorkspace {...workspaceProps} />
-              )}
-            </>
+            <EnzoWorkspace {...workspaceProps} />
           )}
         </main>
 
@@ -717,9 +420,7 @@ export const App: React.FC = () => {
           onSave={handleSaveModalItem}
           initialData={editingItem}
           defaultDeadline={defaultDeadline}
-          clients={activeWorkspaceClients}
-          workspaceMode={workspaceMode}
-          currentUserEmail={currentUser.email}
+          clients={clients}
         />
 
         {/* Modal para Crear / Editar Cliente */}

@@ -1,23 +1,20 @@
 import React, { useState } from 'react';
 import { Check, Video } from 'lucide-react';
-import { ActionItem, VINTAGE_COLORS, WorkspaceMode, getUserByEmail } from '../types';
+import { ActionItem, VINTAGE_COLORS } from '../types';
 
 interface CalendarActionCardProps {
   item: ActionItem;
-  workspaceMode?: WorkspaceMode;
   onToggleComplete: (id: string) => void;
   onEdit: (item: ActionItem) => void;
 }
 
 export const CalendarActionCard: React.FC<CalendarActionCardProps> = ({
   item,
-  workspaceMode = 'personal',
   onToggleComplete,
   onEdit,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const colorDef = VINTAGE_COLORS[item.tagColor] || VINTAGE_COLORS.emerald;
-  const assignedUser = getUserByEmail(item.userEmail);
 
   const handleDragStart = (e: React.DragEvent) => {
     e.stopPropagation();
@@ -48,7 +45,7 @@ export const CalendarActionCard: React.FC<CalendarActionCardProps> = ({
         isDragging ? 'opacity-40 scale-95 shadow-none' : ''
       } ${item.taskType === 'meeting' ? 'border-l-[3px] border-l-purple-500' : ''}`}
     >
-      {/* Top row: Checkbox, Client Tag Capsule, Responsible Avatar, and USD Value */}
+      {/* Top row: Checkbox, Client Tag Capsule and USD Value */}
       <div className="flex items-center justify-between gap-1 min-w-0">
         <div className="flex items-center gap-1 min-w-0 flex-1">
           <button
@@ -62,17 +59,6 @@ export const CalendarActionCard: React.FC<CalendarActionCardProps> = ({
           >
             <Check className="w-2.5 h-2.5 text-transparent group-hover/card:text-zinc-300 hover:!text-emerald-600 transition-colors" />
           </button>
-
-          {/* Avatar del responsable en modo Equipo Polarist */}
-          {workspaceMode === 'team' && (
-            <span
-              className="w-4 h-4 rounded-full flex items-center justify-center text-[8.5px] font-bold text-white flex-shrink-0 shadow-2xs"
-              style={{ backgroundColor: assignedUser.avatarColor }}
-              title={`Responsable: ${assignedUser.name}`}
-            >
-              {assignedUser.initials}
-            </span>
-          )}
 
           {/* Icono de Meeting */}
           {item.taskType === 'meeting' && (

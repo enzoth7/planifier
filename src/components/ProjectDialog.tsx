@@ -235,7 +235,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({ project, onClose, 
   // `fixed` en uno relativo al tablero en lugar de a la ventana.
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/40 backdrop-blur-sm"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) requestClose();
       }}
@@ -244,7 +244,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({ project, onClose, 
         role="dialog"
         aria-modal="true"
         aria-label={`Proyecto ${project.title}`}
-        className="relative w-full max-w-4xl h-[36rem] max-h-[90vh] flex flex-col rounded-xl bg-white border border-zinc-200 shadow-2xl text-zinc-900"
+        className="relative w-full max-w-6xl h-[92vh] flex flex-col rounded-xl bg-white border border-zinc-200 shadow-2xl text-zinc-900"
       >
         {/* Header */}
         <div className="flex items-start gap-3 px-6 pt-5 pb-4 border-b border-zinc-100 flex-shrink-0">
@@ -279,7 +279,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({ project, onClose, 
         {/* Body: lista de notas | editor */}
         <div className="flex-1 min-h-0 flex flex-col sm:flex-row">
           {/* Lista */}
-          <div className="sm:w-80 flex-shrink-0 max-h-52 sm:max-h-none flex flex-col border-b sm:border-b-0 sm:border-r border-zinc-100 min-h-0">
+          <div className="sm:w-96 flex-shrink-0 max-h-52 sm:max-h-none flex flex-col border-b sm:border-b-0 sm:border-r border-zinc-100 min-h-0">
             <div className="p-3 flex-shrink-0">
               <button
                 type="button"

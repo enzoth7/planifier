@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, Video, FolderOpen } from 'lucide-react';
-import { ActionItem, ClientItem, VintageColorKey, VINTAGE_COLORS, TaskType, APP_USERS, WorkspaceMode } from '../types';
+import { ActionItem, ClientItem, VintageColorKey, VINTAGE_COLORS, TaskType } from '../types';
 import { ClientAutocomplete } from './ClientAutocomplete';
 
 interface ActionModalProps {
@@ -9,9 +9,6 @@ interface ActionModalProps {
   onSave: (itemData: Partial<ActionItem>) => void;
   initialData?: ActionItem | null;
   defaultDeadline?: string;
-  defaultUserEmail?: string;
-  currentUserEmail?: string;
-  workspaceMode?: WorkspaceMode;
   clients?: ClientItem[];
 }
 
@@ -21,12 +18,8 @@ export const ActionModal: React.FC<ActionModalProps> = ({
   onSave,
   initialData,
   defaultDeadline,
-  defaultUserEmail,
-  currentUserEmail,
-  workspaceMode = 'personal',
   clients = [],
 }) => {
-  const activeEmail = currentUserEmail || defaultUserEmail || 'enzothome1@gmail.com';
   const [title, setTitle] = useState('');
   const [target, setTarget] = useState('');
   const [tagColor, setTagColor] = useState<VintageColorKey>('emerald');
@@ -34,7 +27,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
   const [deadline, setDeadline] = useState('');
   const [notes, setNotes] = useState('');
   const [taskType, setTaskType] = useState<TaskType>('action');
-  const [userEmail, setUserEmail] = useState<string>(activeEmail);
 
   useEffect(() => {
     if (initialData) {
@@ -45,14 +37,12 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       setDeadline(initialData.deadline);
       setNotes(initialData.notes || '');
       setTaskType(initialData.taskType || 'action');
-      setUserEmail(initialData.userEmail || activeEmail);
     } else {
       setTitle('');
-      setTarget(workspaceMode === 'team' ? 'Polarist' : '');
+      setTarget('');
       setTagColor('emerald');
       setValue('1500');
       setTaskType('action');
-      setUserEmail(activeEmail);
       setNotes('');
       if (defaultDeadline) {
         setDeadline(defaultDeadline);
@@ -62,7 +52,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         setDeadline(d.toISOString().split('T')[0]);
       }
     }
-  }, [initialData, defaultDeadline, activeEmail, workspaceMode, isOpen]);
+  }, [initialData, defaultDeadline, isOpen]);
 
   if (!isOpen) return null;
 
@@ -84,7 +74,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       // por eso no se envía `subtasks` y se conservan tal cual están.
       deadline: isProject ? '' : deadline,
       notes: notes.trim(),
-      userEmail,
       taskType,
     });
     onClose();
@@ -118,8 +107,8 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          {/* Tipo de Tarea & Responsable */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-2.5 rounded-lg bg-zinc-50 border border-zinc-200/80">
+          {/* Tipo de Tarea */}
+          <div className="p-2.5 rounded-lg bg-zinc-50 border border-zinc-200/80">
             {/* Tipo de Tarea */}
             <div>
               <label className="block font-medium text-zinc-700 mb-1.5">
@@ -164,38 +153,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                   <FolderOpen className="w-3 h-3 text-sky-700" />
                   <span>Proyecto</span>
                 </button>
-              </div>
-            </div>
-
-            {/* Responsable */}
-            <div>
-              <label className="block font-medium text-zinc-700 mb-1.5">
-                Responsable
-              </label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {APP_USERS.map((user) => {
-                  const isSelected = userEmail.toLowerCase() === user.email.toLowerCase();
-                  return (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onClick={() => setUserEmail(user.email)}
-                      className={`flex items-center justify-center gap-1.5 py-1 px-1.5 rounded-md border transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-white text-zinc-900 border-zinc-900 shadow-xs font-semibold ring-1 ring-zinc-900'
-                          : 'bg-zinc-100 text-zinc-600 border-transparent hover:bg-zinc-200/70'
-                      }`}
-                    >
-                      <span
-                        className="w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: user.avatarColor }}
-                      >
-                        {user.initials}
-                      </span>
-                      <span className="truncate text-[11px]">{user.name}</span>
-                    </button>
-                  );
-                })}
               </div>
             </div>
           </div>

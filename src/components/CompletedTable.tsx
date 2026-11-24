@@ -9,21 +9,19 @@ import {
   Video,
   FolderOpen,
 } from 'lucide-react';
-import { ActionItem, VINTAGE_COLORS, WorkspaceMode, getUserByEmail } from '../types';
+import { ActionItem, VINTAGE_COLORS } from '../types';
 import { formatCompletedDate, formatDisplayDate } from '../utils/dates';
 
 interface CompletedTableProps {
   items: ActionItem[];
   onRestore: (item: ActionItem) => void;
   onDelete: (id: string) => void;
-  workspaceMode?: WorkspaceMode;
 }
 
 export const CompletedTable: React.FC<CompletedTableProps> = ({
   items,
   onRestore,
   onDelete,
-  workspaceMode = 'personal',
 }) => {
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
 
@@ -41,19 +39,12 @@ export const CompletedTable: React.FC<CompletedTableProps> = ({
         {/* Main Columns */}
         <div className="flex-1 grid grid-cols-12 gap-3 sm:gap-6 items-center">
           {/* Col 1: Acción / Descripción */}
-          <div className={`${workspaceMode === 'team' ? 'col-span-4' : 'col-span-5'} pl-7 sm:pl-8`}>
+          <div className={`col-span-5 pl-7 sm:pl-8`}>
             ACCIÓN / DESCRIPCIÓN
           </div>
 
-          {/* Col 2 (Solo modo team): ENCARGADO */}
-          {workspaceMode === 'team' && (
-            <div className="col-span-2 pl-2 sm:pl-3 text-xs font-semibold tracking-wider text-zinc-500">
-              ENCARGADO
-            </div>
-          )}
-
           {/* Col Cliente */}
-          <div className={`${workspaceMode === 'team' ? 'col-span-2' : 'col-span-3'} pl-2 sm:pl-3`}>
+          <div className={`col-span-3 pl-2 sm:pl-3`}>
             CLIENTE
           </div>
 
@@ -88,7 +79,6 @@ export const CompletedTable: React.FC<CompletedTableProps> = ({
             const projectNotes = isProject ? item.subtasks || [] : [];
             const subtasksCount = projectNotes.length;
             const completedDateStr = formatCompletedDate(item.completedAt);
-            const user = getUserByEmail(item.userEmail);
 
             return (
               <div
@@ -102,7 +92,7 @@ export const CompletedTable: React.FC<CompletedTableProps> = ({
                   {/* COLUMNS GRID */}
                   <div className="flex-1 grid grid-cols-12 gap-3 sm:gap-6 items-start sm:items-center min-w-0">
                     {/* COLUMNA 1: Acción / Descripción */}
-                    <div className={`col-span-12 ${workspaceMode === 'team' ? 'md:col-span-4' : 'md:col-span-5'} min-w-0 pr-2`}>
+                    <div className={`col-span-12 md:col-span-5 min-w-0 pr-2`}>
                       <div className="flex items-start gap-2.5">
                         {/* Completed Check Badge / Restore button */}
                         <button
@@ -167,23 +157,8 @@ export const CompletedTable: React.FC<CompletedTableProps> = ({
                     </div>
                   </div>
 
-                    {/* COLUMNA 2 (Solo modo team): ENCARGADO */}
-                    {workspaceMode === 'team' && (
-                      <div className="col-span-6 md:col-span-2 min-w-0 flex items-center">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border border-zinc-200/80 bg-white/90 text-zinc-700 shadow-2xs">
-                          <span
-                            className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-2xs flex-shrink-0"
-                            style={{ backgroundColor: user.avatarColor }}
-                          >
-                            {user.initials}
-                          </span>
-                          <span className="truncate max-w-[80px] font-medium">{user.name}</span>
-                        </div>
-                      </div>
-                    )}
-
                     {/* COLUMNA CLIENTE */}
-                    <div className={`col-span-6 ${workspaceMode === 'team' ? 'md:col-span-2' : 'md:col-span-3'} min-w-0`}>
+                    <div className={`col-span-6 md:col-span-3 min-w-0`}>
                       <div
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${colorDef.bg} ${colorDef.border} ${colorDef.text} opacity-90`}
                       >

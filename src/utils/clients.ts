@@ -1,4 +1,4 @@
-import { ClientItem, ClientOwner } from '../types';
+import { ClientItem } from '../types';
 
 export const POLARIST_TEAM_CLIENT_ID = 'client-polarist';
 
@@ -17,11 +17,6 @@ export const isPolaristTeamClient = (client: ClientItem): boolean =>
   client.id === POLARIST_TEAM_CLIENT_ID ||
   client.isSystem === true ||
   (client.owner === 'polarist' && client.name.trim().toLowerCase() === 'polarist');
-
-export const getPersonalClientsWithPolarist = (
-  clients: ClientItem[],
-  owner: Exclude<ClientOwner, 'polarist'>
-): ClientItem[] => clients.filter((client) => client.owner === owner || isPolaristTeamClient(client));
 
 export const ensurePolaristTeamClient = (clients: ClientItem[]): ClientItem[] => {
   const index = clients.findIndex(isPolaristTeamClient);

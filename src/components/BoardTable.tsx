@@ -26,7 +26,7 @@ import {
   Video,
   FolderOpen,
 } from 'lucide-react';
-import { ActionItem, ClientItem, VintageColorKey, VINTAGE_COLORS, TaskType, UserProfile, WorkspaceMode, APP_USERS } from '../types';
+import { ActionItem, ClientItem, VintageColorKey, VINTAGE_COLORS, TaskType } from '../types';
 import { BoardRow } from './BoardRow';
 import { EmptyState } from './EmptyState';
 import { ClientAutocomplete } from './ClientAutocomplete';
@@ -72,8 +72,6 @@ const QuickTypeToggle: React.FC<{ value: TaskType; onChange: (type: TaskType) =>
 interface BoardTableProps {
   items: ActionItem[];
   clients?: ClientItem[];
-  workspaceMode?: WorkspaceMode;
-  currentUser?: UserProfile;
   onReorder: (newItems: ActionItem[]) => void;
   onToggleComplete: (id: string) => void;
   onEdit: (item: ActionItem) => void;
@@ -92,17 +90,13 @@ interface BoardTableProps {
     tagColor?: VintageColorKey;
     value: number;
     deadline: string;
-    userEmail?: string;
     taskType?: TaskType;
   }) => void;
-  onUpdateUserEmail?: (id: string, userEmail: string) => void;
 }
 
 export const BoardTable: React.FC<BoardTableProps> = ({
   items,
   clients = [],
-  workspaceMode = 'personal',
-  currentUser,
   onReorder,
   onToggleComplete,
   onEdit,
@@ -116,7 +110,6 @@ export const BoardTable: React.FC<BoardTableProps> = ({
   onOpenCreateModal,
   onNavigateToClients,
   onQuickAdd,
-  onUpdateUserEmail,
 }) => {
   // Sort and Filter States
   const [sortKey, setSortKey] = useState<SortKey>('manual');
@@ -129,12 +122,11 @@ export const BoardTable: React.FC<BoardTableProps> = ({
 
   // Quick Add Row State
   const [quickTitle, setQuickTitle] = useState('');
-  const [quickTarget, setQuickTarget] = useState(workspaceMode === 'team' ? 'Polarist' : '');
+  const [quickTarget, setQuickTarget] = useState('');
   const [quickColor, setQuickColor] = useState<VintageColorKey | undefined>(undefined);
   const [quickValue, setQuickValue] = useState('');
   const [quickDeadline, setQuickDeadline] = useState('');
   const [quickTaskType, setQuickTaskType] = useState<TaskType>('action');
-  const [quickUserEmail, setQuickUserEmail] = useState<string>(currentUser?.email || 'enzothome1@gmail.com');
   const [isQuickAddExpanded, setIsQuickAddExpanded] = useState(false);
 
   // Proyecto abierto en el diálogo de notas. Se guarda el id para que el diálogo
@@ -142,13 +134,6 @@ export const BoardTable: React.FC<BoardTableProps> = ({
   const [openProjectId, setOpenProjectId] = useState<string | null>(null);
   const openProject = openProjectId ? items.find((i) => i.id === openProjectId) || null : null;
   const isQuickProject = quickTaskType === 'project';
-
-  // Sincronizar usuario por defecto si cambia currentUser
-  useEffect(() => {
-    if (currentUser?.email) {
-      setQuickUserEmail(currentUser.email);
-    }
-  }, [currentUser]);
 
   // Setup pointer sensor with activation distance to avoid blocking clicks
   const sensors = useSensors(
@@ -339,9 +324,7 @@ export const BoardTable: React.FC<BoardTableProps> = ({
 
     const val = parseFloat(quickValue.replace(/[^0-9.]/g, '')) || 0;
 
-    const targetToUse =
-      quickTarget.trim() ||
-      (workspaceMode === 'team' ? 'Polarist' : selectedClientFilter || 'General');
+    const targetToUse = quickTarget.trim() || selectedClientFilter || 'General';
 
     const clientMatch = clients.find(
       (c) => c.name.toLowerCase() === targetToUse.toLowerCase()
@@ -354,14 +337,11 @@ export const BoardTable: React.FC<BoardTableProps> = ({
       tagColor: assignedColor,
       value: val,
       deadline: d,
-      userEmail: workspaceMode === 'team' ? quickUserEmail : currentUser?.email || 'enzothome1@gmail.com',
       taskType: quickTaskType,
     });
 
     setQuickTitle('');
-    if (workspaceMode !== 'team') {
-      setQuickTarget('');
-    }
+    setQuickTarget('');
     setQuickColor(undefined);
     setQuickValue('');
     setQuickDeadline('');
@@ -391,7 +371,7 @@ export const BoardTable: React.FC<BoardTableProps> = ({
         {/* Main Columns */}
         <div className="flex-1 grid grid-cols-12 gap-3 sm:gap-6 items-center">
           {/* Col 1: Acción / Descripción */}
-          <div className={`${workspaceMode === 'team' ? 'col-span-4' : 'col-span-5'} pl-7 sm:pl-8`}>
+          <div className={`col-span-5 pl-7 sm:pl-8`}>
             <button
               type="button"
               onClick={() => handleCycleSort('title')}
@@ -419,15 +399,8 @@ export const BoardTable: React.FC<BoardTableProps> = ({
             </button>
           </div>
 
-          {/* Col 2 (Solo modo team): ENCARGADO */}
-          {workspaceMode === 'team' && (
-            <div className="col-span-2 pl-2 sm:pl-3 text-xs font-semibold tracking-wider text-zinc-500">
-              ENCARGADO
-            </div>
-          )}
-
           {/* Col Cliente */}
-          <div className={`${workspaceMode === 'team' ? 'col-span-2' : 'col-span-3'} pl-2 sm:pl-3 relative`} ref={clientFilterRef}>
+          <div className={`col-span-3 pl-2 sm:pl-3 relative`} ref={clientFilterRef}>
             <button
               type="button"
               onClick={() => setIsClientFilterOpen((prev) => !prev)}
@@ -804,110 +777,7 @@ export const BoardTable: React.FC<BoardTableProps> = ({
         </div>
 
         <div className="flex-1 grid grid-cols-12 gap-3 sm:gap-6 items-center">
-          {workspaceMode === 'team' ? (
-            <>
-              {/* Col 1: Acción / Descripción (col-span-12 md:col-span-4) */}
-              <div className="col-span-12 md:col-span-4 flex items-center gap-2 min-w-0">
-                {/* Toggle Tipo: Acción vs Meeting */}
-                <QuickTypeToggle value={quickTaskType} onChange={setQuickTaskType} />
-
-                <input
-                  type="text"
-                  value={quickTitle}
-                  onChange={(e) => {
-                    setQuickTitle(e.target.value);
-                    if (!isQuickAddExpanded && e.target.value) {
-                      setIsQuickAddExpanded(true);
-                    }
-                  }}
-                  placeholder={isQuickProject ? '+ Título del nuevo proyecto de Polarist...' : '+ Nueva tarea de equipo para Polarist...'}
-                  className="flex-1 min-w-0 bg-transparent text-zinc-900 placeholder:text-zinc-400 text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
-                />
-              </div>
-
-              {/* Col 2: Selector de Encargado (col-span-6 md:col-span-2) */}
-              <div className="col-span-6 md:col-span-2 flex items-center pl-2 sm:pl-3 min-w-0">
-                <div className="flex items-center gap-1.5 bg-zinc-100/80 p-1 rounded-lg border border-zinc-200/60">
-                  {APP_USERS.map((user) => {
-                    const isSelected = quickUserEmail.toLowerCase() === user.email.toLowerCase();
-                    return (
-                      <button
-                        key={user.id}
-                        type="button"
-                        onClick={() => setQuickUserEmail(user.email)}
-                        title={`Asignar a ${user.name}`}
-                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-all cursor-pointer ${
-                          isSelected
-                            ? 'ring-2 ring-zinc-900 ring-offset-1 scale-105 shadow-xs text-white'
-                            : 'opacity-40 hover:opacity-100 text-white'
-                        }`}
-                        style={{ backgroundColor: user.avatarColor }}
-                      >
-                        {user.initials}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Col 3: Cliente (col-span-6 md:col-span-2) */}
-              <div className={`col-span-6 md:col-span-2 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:block'}`}>
-                <ClientAutocomplete
-                  value={quickTarget || (isQuickAddExpanded ? '' : 'Polarist')}
-                  onChange={(val) => {
-                    setQuickTarget(val);
-                    const match = clients.find(
-                      (c) => c.name.toLowerCase() === val.trim().toLowerCase()
-                    );
-                    if (match) {
-                      setQuickColor(match.color);
-                    }
-                  }}
-                  onSelectClient={(client) => {
-                    setQuickTarget(client.name);
-                    setQuickColor(client.color);
-                  }}
-                  clients={clients}
-                  placeholder="Polarist"
-                />
-              </div>
-
-              {/* Col 4: Dinero USD (col-span-6 md:col-span-2) */}
-              <div className={`col-span-6 md:col-span-2 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:block'}`}>
-                <input
-                  type="text"
-                  value={quickValue}
-                  onChange={(e) => setQuickValue(e.target.value)}
-                  placeholder="$ Monto USD"
-                  className="w-full bg-transparent text-emerald-700 font-mono text-xs sm:text-sm px-2.5 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none font-medium"
-                />
-              </div>
-
-              {/* Col 5: Fecha Límite + Botón Agregar (col-span-12 md:col-span-2) */}
-              <div className={`col-span-12 md:col-span-2 flex items-center gap-2 ${isQuickAddExpanded || quickTitle ? 'block' : 'hidden md:flex'}`}>
-                {isQuickProject ? (
-                  <span className="w-full px-2 py-1.5 text-xs sm:text-sm font-mono text-zinc-400" title="Las fechas van en las notas del proyecto">
-                    Sin fecha
-                  </span>
-                ) : (
-                  <input
-                    type="date"
-                    value={quickDeadline}
-                    onChange={(e) => setQuickDeadline(e.target.value)}
-                    className="w-full bg-transparent text-zinc-700 font-mono text-xs sm:text-sm px-2 py-1.5 rounded border border-transparent focus:border-zinc-300 focus:bg-zinc-50 focus:outline-none"
-                  />
-                )}
-                {quickTitle.trim() && (
-                  <button
-                    type="submit"
-                    className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white font-medium text-xs flex-shrink-0 transition-all shadow-sm cursor-pointer"
-                  >
-                    Agregar
-                  </button>
-                )}
-              </div>
-            </>
-          ) : (
+          {(
             <>
               {/* Col 1: Acción / Descripción (col-span-12 md:col-span-5) */}
               <div className="col-span-12 md:col-span-5 flex items-center gap-2">
@@ -1034,7 +904,6 @@ export const BoardTable: React.FC<BoardTableProps> = ({
                     key={item.id}
                     item={item}
                     clients={clients}
-                    workspaceMode={workspaceMode}
                     openUpwards={openUpwards}
                     onToggleComplete={onToggleComplete}
                     onEdit={onEdit}
@@ -1046,7 +915,6 @@ export const BoardTable: React.FC<BoardTableProps> = ({
                     onUpdateDeadline={onUpdateDeadline}
                     onOpenProject={setOpenProjectId}
                     onNavigateToClients={onNavigateToClients}
-                    onUpdateUserEmail={onUpdateUserEmail}
                   />
                 );
               })}
